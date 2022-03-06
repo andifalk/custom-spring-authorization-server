@@ -14,7 +14,7 @@ import java.util.*;
 public class AuthorizationServerUserDetailsService implements UserDetailsService {
 
     private final PasswordEncoder passwordEncoder;
-    private final Map<String, User> users = new HashMap();
+    private final Map<String, User> users = new HashMap<>();
 
     public AuthorizationServerUserDetailsService(PasswordEncoder passwordEncoder) {
         this.passwordEncoder = passwordEncoder;
