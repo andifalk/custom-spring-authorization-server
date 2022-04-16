@@ -22,6 +22,7 @@ import org.springframework.security.config.annotation.web.configurers.oauth2.ser
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.OAuth2TokenFormat;
 import org.springframework.security.oauth2.core.OAuth2TokenType;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
@@ -31,6 +32,7 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.config.ProviderSettings;
+import org.springframework.security.oauth2.server.authorization.config.TokenSettings;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -111,7 +113,23 @@ public class AuthorizationServerConfig {
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
                 )))
-                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
+                .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
+                .build();
+
+        RegisteredClient demoOpaqueClientPkce = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("demo-opaque-client-pkce")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .redirectUri("http://127.0.0.1:9095/client/callback")
+                .redirectUri("http://127.0.0.1:9095/client/authorized")
+                .redirectUri("http://127.0.0.1:9095/client")
+                .scopes(scopes -> scopes.addAll(List.of(
+                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
+                )))
+                .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE).build())
+                .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
                 .build();
 
         RegisteredClient demoClientConsent = RegisteredClient.withId(UUID.randomUUID().toString())
@@ -138,6 +156,7 @@ public class AuthorizationServerConfig {
         JdbcRegisteredClientRepository registeredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
         registeredClientRepository.save(demoClient);
         registeredClientRepository.save(demoClientPkce);
+        registeredClientRepository.save(demoOpaqueClientPkce);
         registeredClientRepository.save(demoClientConsent);
 
         return registeredClientRepository;
