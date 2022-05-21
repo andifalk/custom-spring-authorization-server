@@ -30,12 +30,4 @@ public class DefaultSecurityConfig {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
-    @Bean
-    public ObjectMapper objectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new CoreJackson2Module());
-        mapper.activateDefaultTyping(new LaissezFaireSubTypeValidator());
-        return mapper;
-    }
-
 }

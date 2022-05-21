@@ -5,13 +5,12 @@ logging:
   level:
     root: INFO
     org.springframework.web: INFO
-    org.springframework.security: INFO
-    org.springframework.security.oauth2: DEBUG
+    org.springframework.security: trace
 
 spring:
   security:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: http://auth-server:9000/oauth2/jwks
-          issuer-uri: http://auth-server:9000
+          jwk-set-uri: http://localhost:9000/oauth2/jwks
+          issuer-uri: http://localhost:9000

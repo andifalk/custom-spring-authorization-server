@@ -6,6 +6,8 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -20,10 +22,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
-import org.springframework.security.oauth2.core.OAuth2TokenFormat;
-import org.springframework.security.oauth2.core.OAuth2TokenType;
+import org.springframework.security.oauth2.core.*;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.server.authorization.*;
@@ -44,6 +43,12 @@ import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
 public class AuthorizationServerConfig {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizationServerConfig.class);
+
+    /*
+     * Security config for all authz server endpoints.
+     */
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -59,10 +64,13 @@ public class AuthorizationServerConfig {
                                 oidcUserInfoEndpointConfigurer.userInfoMapper(ac -> {
                                     Map<String, Object> claims = new HashMap<>();
                                     JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) ac.getAuthentication().getPrincipal();
-                                    claims.put("sub", ac.getAuthorization().getPrincipalName());
+                                    claims.put("sub", jwtAuthenticationToken.getToken().getSubject());
+                                    claims.put("name", jwtAuthenticationToken.getToken().getClaim("given_name") + " " +
+                                            jwtAuthenticationToken.getToken().getClaim("family_name"));
                                     claims.put("family_name", jwtAuthenticationToken.getToken().getClaim("family_name"));
                                     claims.put("given_name", jwtAuthenticationToken.getToken().getClaim("given_name"));
                                     claims.put("email", jwtAuthenticationToken.getToken().getClaim("email"));
+                                    claims.put("roles", jwtAuthenticationToken.getToken().getClaim("roles"));
                                     return new OidcUserInfo(claims);
                                 }))
         );
@@ -78,7 +86,9 @@ public class AuthorizationServerConfig {
         return http.formLogin(Customizer.withDefaults()).build();
     }
 
-    // @formatter:off
+    /*
+     * Repository with all registered OAuth/OIDC clients.
+     */
     @Bean
     public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
         RegisteredClient demoClient = RegisteredClient.withId(UUID.randomUUID().toString())
@@ -92,9 +102,11 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .redirectUri("http://127.0.0.1:9095/client/callback")
-                .redirectUri("http://127.0.0.1:9095/client/authorized")
-                .redirectUri("http://127.0.0.1:9095/client")
+                .redirectUri("http://localhost:9095/client/callback")
+                .redirectUri("http://localhost:9095/client/authorized")
+                .redirectUri("http://localhost:9095/client")
+                .redirectUri("http://127.0.0.1:9095/login/oauth2/code/spring-authz-server")
+                .redirectUri("https://oauth.pstmn.io/v1/callback")
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
                 )))
@@ -107,33 +119,19 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .redirectUri("http://127.0.0.1:9095/client/callback")
-                .redirectUri("http://127.0.0.1:9095/client/authorized")
-                .redirectUri("http://127.0.0.1:9095/client")
+                .redirectUri("http://localhost:9095/client/callback")
+                .redirectUri("http://localhost:9095/client/authorized")
+                .redirectUri("http://localhost:9095/client")
+                .redirectUri("http://localhost:9095/login/oauth2/code/spring-authz-server")
+                .redirectUri("https://oauth.pstmn.io/v1/callback")
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
                 )))
                 .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
                 .build();
 
-        RegisteredClient demoOpaqueClientPkce = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("demo-opaque-client-pkce")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .redirectUri("http://127.0.0.1:9095/client/callback")
-                .redirectUri("http://127.0.0.1:9095/client/authorized")
-                .redirectUri("http://127.0.0.1:9095/client")
-                .scopes(scopes -> scopes.addAll(List.of(
-                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
-                )))
-                .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE).build())
-                .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
-                .build();
-
-        RegisteredClient demoClientConsent = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("demo-client-consent")
+        RegisteredClient demoClientOpaque = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("demo-client-opaque")
                 .clientSecret(passwordEncoder.encode("secret"))
                 .clientAuthenticationMethods(methods -> methods.addAll(
                         List.of(
@@ -143,25 +141,54 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .redirectUri("http://127.0.0.1:9095/client/callback")
-                .redirectUri("http://127.0.0.1:9095/client/authorized")
-                .redirectUri("http://127.0.0.1:9095/client")
+                .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE).build())
+                .redirectUri("http://localhost:9095/client/callback")
+                .redirectUri("http://localhost:9095/client/authorized")
+                .redirectUri("http://localhost:9095/client")
+                .redirectUri("http://localhost:9095/login/oauth2/code/spring-authz-server")
+                .redirectUri("https://oauth.pstmn.io/v1/callback")
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
                 )))
-                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
+                .build();
+
+        RegisteredClient demoClientPkceOpaque = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("demo-client-pke-opaque")
+                .clientSecret(passwordEncoder.encode("secret"))
+                .clientAuthenticationMethods(methods -> methods.addAll(
+                        List.of(
+                                ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
+                                ClientAuthenticationMethod.CLIENT_SECRET_POST,
+                                ClientAuthenticationMethod.NONE
+                        )))
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE).build())
+                .redirectUri("http://localhost:9095/client/callback")
+                .redirectUri("http://localhost:9095/client/authorized")
+                .redirectUri("http://localhost:9095/client")
+                .redirectUri("http://localhost:9095/login/oauth2/code/spring-authz-server")
+                .redirectUri("https://oauth.pstmn.io/v1/callback")
+                .scopes(scopes -> scopes.addAll(List.of(
+                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
+                )))
+                .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
                 .build();
 
         // Save registered client in db as if in-memory
         JdbcRegisteredClientRepository registeredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
         registeredClientRepository.save(demoClient);
         registeredClientRepository.save(demoClientPkce);
-        registeredClientRepository.save(demoOpaqueClientPkce);
-        registeredClientRepository.save(demoClientConsent);
+        registeredClientRepository.save(demoClientOpaque);
+        registeredClientRepository.save(demoClientPkceOpaque);
+
+        LOGGER.info("Registered OAuth2/OIDC clients");
 
         return registeredClientRepository;
     }
-    // @formatter:on
+
 
     @Bean
     public OAuth2AuthorizationService authorizationService(JdbcTemplate jdbcTemplate, RegisteredClientRepository registeredClientRepository) {
@@ -173,6 +200,9 @@ public class AuthorizationServerConfig {
         return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, registeredClientRepository);
     }
 
+    /*
+     * Generate the private/public key pair for signature of JWT.
+     */
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
         RSAKey rsaKey = Jwks.generateRsa();
@@ -183,7 +213,7 @@ public class AuthorizationServerConfig {
     @Bean
     public ProviderSettings providerSettings() {
 
-        return ProviderSettings.builder().issuer("http://auth-server:9000").build();
+        return ProviderSettings.builder().issuer("http://localhost:9000").build();
 
 
     }
@@ -202,16 +232,30 @@ public class AuthorizationServerConfig {
         // @formatter:on
     }
 
+    /*
+     * Customizes token contents for this authz server.
+     */
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer() {
         return context -> {
+            UsernamePasswordAuthenticationToken authentication = context.getPrincipal();
+            LOGGER.info("Customizing {} for user {}", context.getTokenType(), authentication.getPrincipal());
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
-                UsernamePasswordAuthenticationToken authentication = context.getPrincipal();
-                    context.getHeaders().header("typ", "jwt");
-                    context.getClaims().claim("roles", ((User) authentication.getPrincipal()).getRoles());
-                    context.getClaims().claim("given_name", ((User) authentication.getPrincipal()).getFirstName());
-                    context.getClaims().claim("family_name", ((User) authentication.getPrincipal()).getLastName());
-                    context.getClaims().claim("email", ((User) authentication.getPrincipal()).getEmail());
+                context.getHeaders().header("typ", "jwt");
+                context.getClaims().subject(((User) authentication.getPrincipal()).getIdentifier().toString());
+                context.getClaims().claim("roles", ((User) authentication.getPrincipal()).getRoles());
+                context.getClaims().claim("given_name", ((User) authentication.getPrincipal()).getFirstName());
+                context.getClaims().claim("family_name", ((User) authentication.getPrincipal()).getLastName());
+                context.getClaims().claim("email", ((User) authentication.getPrincipal()).getEmail());
+            } else if (OAuth2TokenType.REFRESH_TOKEN.equals(context.getTokenType())) {
+                // Nothing to do here
+            } else {
+                context.getHeaders().header("typ", "jwt");
+                context.getClaims().subject(((User) authentication.getPrincipal()).getIdentifier().toString());
+                context.getClaims().claim("roles", ((User) authentication.getPrincipal()).getRoles());
+                context.getClaims().claim("given_name", ((User) authentication.getPrincipal()).getFirstName());
+                context.getClaims().claim("family_name", ((User) authentication.getPrincipal()).getLastName());
+                context.getClaims().claim("email", ((User) authentication.getPrincipal()).getEmail());
             }
         };
     }
