@@ -22,7 +22,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.core.*;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.OAuth2TokenFormat;
+import org.springframework.security.oauth2.core.OAuth2TokenType;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.server.authorization.*;
@@ -102,9 +105,9 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .redirectUri("http://localhost:9095/client/callback")
-                .redirectUri("http://localhost:9095/client/authorized")
-                .redirectUri("http://localhost:9095/client")
+                .redirectUri("http://127.0.0.1:9095/client/callback")
+                .redirectUri("http://127.0.0.1:9095/client/authorized")
+                .redirectUri("http://127.0.0.1:9095/client")
                 .redirectUri("http://127.0.0.1:9095/login/oauth2/code/spring-authz-server")
                 .redirectUri("https://oauth.pstmn.io/v1/callback")
                 .scopes(scopes -> scopes.addAll(List.of(
@@ -119,10 +122,10 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .redirectUri("http://localhost:9095/client/callback")
-                .redirectUri("http://localhost:9095/client/authorized")
-                .redirectUri("http://localhost:9095/client")
-                .redirectUri("http://localhost:9095/login/oauth2/code/spring-authz-server")
+                .redirectUri("http://127.0.0.1:9095/client/callback")
+                .redirectUri("http://127.0.0.1:9095/client/authorized")
+                .redirectUri("http://127.0.0.1:9095/client")
+                .redirectUri("http://127.0.0.1:9095/login/oauth2/code/spring-authz-server")
                 .redirectUri("https://oauth.pstmn.io/v1/callback")
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
@@ -142,10 +145,10 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE).build())
-                .redirectUri("http://localhost:9095/client/callback")
-                .redirectUri("http://localhost:9095/client/authorized")
-                .redirectUri("http://localhost:9095/client")
-                .redirectUri("http://localhost:9095/login/oauth2/code/spring-authz-server")
+                .redirectUri("http://127.0.0.1:9095/client/callback")
+                .redirectUri("http://127.0.0.1:9095/client/authorized")
+                .redirectUri("http://127.0.0.1:9095/client")
+                .redirectUri("http://127.0.0.1:9095/login/oauth2/code/spring-authz-server")
                 .redirectUri("https://oauth.pstmn.io/v1/callback")
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
@@ -154,7 +157,7 @@ public class AuthorizationServerConfig {
                 .build();
 
         RegisteredClient demoClientPkceOpaque = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("demo-client-pke-opaque")
+                .clientId("demo-client-pkce-opaque")
                 .clientSecret(passwordEncoder.encode("secret"))
                 .clientAuthenticationMethods(methods -> methods.addAll(
                         List.of(
@@ -166,10 +169,10 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE).build())
-                .redirectUri("http://localhost:9095/client/callback")
-                .redirectUri("http://localhost:9095/client/authorized")
-                .redirectUri("http://localhost:9095/client")
-                .redirectUri("http://localhost:9095/login/oauth2/code/spring-authz-server")
+                .redirectUri("http://127.0.0.1:9095/client/callback")
+                .redirectUri("http://127.0.0.1:9095/client/authorized")
+                .redirectUri("http://127.0.0.1:9095/client")
+                .redirectUri("http://127.0.0.1:9095/login/oauth2/code/spring-authz-server")
                 .redirectUri("https://oauth.pstmn.io/v1/callback")
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
@@ -212,10 +215,7 @@ public class AuthorizationServerConfig {
 
     @Bean
     public ProviderSettings providerSettings() {
-
         return ProviderSettings.builder().issuer("http://localhost:9000").build();
-
-
     }
 
     @Bean
