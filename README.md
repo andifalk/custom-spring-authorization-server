@@ -61,6 +61,7 @@ The collections (for both JWT and Opaque tokens) can be found in the _postman_ f
 The authorization server uses a persistent H2 (in-memory) storage for configuration and stored tokens.
 
 You may have a look inside the data using the [H2 console](http://localhost:9000/h2-console).
+Please use ```jdbc:h2:mem:authzserver``` as jdbc url and _sa_ as user name, leave password empty.
 
 ## Customizations
 
