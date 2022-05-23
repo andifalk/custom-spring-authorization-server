@@ -6,7 +6,7 @@ Customized from sample at [https://github.com/spring-projects/spring-authorizati
 
 Start the server by running the class _com.example.spring.authorizationserver.SpringAuthorizationServerApplication_.
 
-Look up the OAuth2/OIDC configuration from [http://auth-server:9000/.well-known/openid-configuration](http://auth-server:9000/.well-known/openid-configuration) to configure your clients and resource servers.
+Look up the OAuth2/OIDC configuration from [http://localhost:9000/.well-known/openid-configuration](http://localhost:9000/.well-known/openid-configuration) to configure your clients and resource servers.
 
 These are the most important configuration settings:
 
@@ -38,7 +38,7 @@ All clients have configured the following redirect URIs (including a special one
 * http://127.0.0.1:9095/login/oauth2/code/spring-authz-server
 * https://oauth.pstmn.io/v1/callback
 
-Please note: Instead of _localhost_ the local ip _127.0.0.1_ is configured as redirect URI. This is because spring security does not allow redirects of clients to localhost addresses.
+__Please note__: Instead of _localhost_ the local ip _127.0.0.1_ is configured as redirect URI. This is because spring security does not allow redirects of clients to localhost addresses.
 
 ## Login
 
