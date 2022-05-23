@@ -12,8 +12,10 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.h2.H2ConsoleProperties;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -37,6 +39,9 @@ class SpringAuthorizationServerApplicationTests {
 
     @Autowired
     private WebClient webClient;
+
+    @MockBean
+    private H2ConsoleProperties h2ConsoleProperties;
 
     @BeforeEach
     public void setUp() {
