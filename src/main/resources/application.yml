@@ -6,6 +6,7 @@ logging:
     root: INFO
     org.springframework.web: INFO
     org.springframework.security: trace
+    org.springframework.security.jackson2: INFO
 
 spring:
   security:

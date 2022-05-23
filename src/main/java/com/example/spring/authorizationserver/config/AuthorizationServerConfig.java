@@ -8,6 +8,7 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -49,11 +50,22 @@ public class AuthorizationServerConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizationServerConfig.class);
 
+    @Bean
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public SecurityFilterChain h2ConsoleSecurityFilterChain(HttpSecurity http) throws Exception {
+        http.requestMatcher(PathRequest.toH2Console())
+                .csrf().disable()
+                .headers().frameOptions().disable()
+                .and()
+                .authorizeRequests().anyRequest().permitAll();
+        return http.build();
+    }
+
     /*
      * Security config for all authz server endpoints.
      */
     @Bean
-    @Order(Ordered.HIGHEST_PRECEDENCE)
+    @Order(Ordered.HIGHEST_PRECEDENCE + 1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
 
         OAuth2AuthorizationServerConfigurer<HttpSecurity> authorizationServerConfigurer =
@@ -222,7 +234,8 @@ public class AuthorizationServerConfig {
     public EmbeddedDatabase embeddedDatabase() {
         // @formatter:off
         return new EmbeddedDatabaseBuilder()
-                .generateUniqueName(true)
+                .generateUniqueName(false)
+                .setName("authzserver")
                 .setType(EmbeddedDatabaseType.H2)
                 .setScriptEncoding("UTF-8")
                 .addScript("org/springframework/security/oauth2/server/authorization/oauth2-authorization-schema.sql")
