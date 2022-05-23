@@ -1,3 +1,6 @@
+[![License](https://img.shields.io/badge/License-Apache%20License%202.0-brightgreen.svg)][1]
+![Java CI with Gradle](https://github.com/andifalk/custom-spring-authorization-server/workflows/Java%20CI%20with%20Gradle/badge.svg)
+
 # Spring Authorization Server
 
 Customized from sample at [https://github.com/spring-projects/spring-authorization-server](https://github.com/spring-projects/spring-authorization-server).
@@ -117,3 +120,15 @@ authorizationServerConfigurer.oidc(
         };
     }
 ```
+
+## Feedback
+
+Any feedback on this project is highly appreciated.
+
+Just send an email to _andreas.falk(at)novatec-gmbh.de_ or contact me via Twitter (_@andifalk_).
+
+## License
+
+Apache 2.0 licensed
+
+[1]:http://www.apache.org/licenses/LICENSE-2.0.txt
