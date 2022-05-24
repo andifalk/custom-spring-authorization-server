@@ -29,7 +29,12 @@ import org.springframework.security.oauth2.core.OAuth2TokenFormat;
 import org.springframework.security.oauth2.core.OAuth2TokenType;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
-import org.springframework.security.oauth2.server.authorization.*;
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenCustomizer;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
@@ -43,6 +48,7 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
@@ -255,8 +261,15 @@ public class AuthorizationServerConfig {
             LOGGER.info("Customizing {} for user {}", context.getTokenType(), authentication.getPrincipal());
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
                 context.getHeaders().header("typ", "jwt");
+                context.getClaims().claims(m -> {
+                    Set<String> existingScopes = (Set<String>) m.get("scope");
+                    Set<String> additional = ((User) authentication.getPrincipal()).getRoles();
+                    additional.addAll(existingScopes);
+                    m.replace("scope", additional);
+                });
                 context.getClaims().subject(((User) authentication.getPrincipal()).getIdentifier().toString());
                 context.getClaims().claim("roles", ((User) authentication.getPrincipal()).getRoles());
+                context.getClaims().claim("scp", ((User) authentication.getPrincipal()).getRoles());
                 context.getClaims().claim("given_name", ((User) authentication.getPrincipal()).getFirstName());
                 context.getClaims().claim("family_name", ((User) authentication.getPrincipal()).getLastName());
                 context.getClaims().claim("email", ((User) authentication.getPrincipal()).getEmail());
@@ -266,6 +279,7 @@ public class AuthorizationServerConfig {
                 context.getHeaders().header("typ", "jwt");
                 context.getClaims().subject(((User) authentication.getPrincipal()).getIdentifier().toString());
                 context.getClaims().claim("roles", ((User) authentication.getPrincipal()).getRoles());
+                context.getClaims().claim("scp", ((User) authentication.getPrincipal()).getRoles());
                 context.getClaims().claim("given_name", ((User) authentication.getPrincipal()).getFirstName());
                 context.getClaims().claim("family_name", ((User) authentication.getPrincipal()).getLastName());
                 context.getClaims().claim("email", ((User) authentication.getPrincipal()).getEmail());
