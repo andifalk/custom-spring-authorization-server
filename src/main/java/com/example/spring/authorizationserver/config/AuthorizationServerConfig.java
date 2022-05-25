@@ -46,6 +46,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -118,7 +119,8 @@ public class AuthorizationServerConfig {
                 .clientAuthenticationMethods(methods -> methods.addAll(
                         List.of(
                                 ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
-                                ClientAuthenticationMethod.CLIENT_SECRET_POST
+                                ClientAuthenticationMethod.CLIENT_SECRET_POST,
+                                ClientAuthenticationMethod.NONE
                         )))
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
@@ -136,7 +138,12 @@ public class AuthorizationServerConfig {
 
         RegisteredClient demoClientPkce = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("demo-client-pkce")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                .clientAuthenticationMethods(methods -> methods.addAll(
+                        List.of(
+                                ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
+                                ClientAuthenticationMethod.CLIENT_SECRET_POST,
+                                ClientAuthenticationMethod.NONE
+                        )))
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
@@ -157,7 +164,8 @@ public class AuthorizationServerConfig {
                 .clientAuthenticationMethods(methods -> methods.addAll(
                         List.of(
                                 ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
-                                ClientAuthenticationMethod.CLIENT_SECRET_POST
+                                ClientAuthenticationMethod.CLIENT_SECRET_POST,
+                                ClientAuthenticationMethod.NONE
                         )))
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
@@ -261,15 +269,16 @@ public class AuthorizationServerConfig {
             LOGGER.info("Customizing {} for user {}", context.getTokenType(), authentication.getPrincipal());
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
                 context.getHeaders().header("typ", "jwt");
+                context.getClaims().audience(List.of("http://localhost:9090/api/todos", "library"));
                 context.getClaims().claims(m -> {
                     Set<String> existingScopes = (Set<String>) m.get("scope");
-                    Set<String> additional = ((User) authentication.getPrincipal()).getRoles();
+                    Set<String> additional = new HashSet<>();
+                    additional.addAll(((User) authentication.getPrincipal()).getRoles());
                     additional.addAll(existingScopes);
                     m.replace("scope", additional);
                 });
                 context.getClaims().subject(((User) authentication.getPrincipal()).getIdentifier().toString());
                 context.getClaims().claim("roles", ((User) authentication.getPrincipal()).getRoles());
-                context.getClaims().claim("scp", ((User) authentication.getPrincipal()).getRoles());
                 context.getClaims().claim("given_name", ((User) authentication.getPrincipal()).getFirstName());
                 context.getClaims().claim("family_name", ((User) authentication.getPrincipal()).getLastName());
                 context.getClaims().claim("email", ((User) authentication.getPrincipal()).getEmail());
@@ -279,7 +288,6 @@ public class AuthorizationServerConfig {
                 context.getHeaders().header("typ", "jwt");
                 context.getClaims().subject(((User) authentication.getPrincipal()).getIdentifier().toString());
                 context.getClaims().claim("roles", ((User) authentication.getPrincipal()).getRoles());
-                context.getClaims().claim("scp", ((User) authentication.getPrincipal()).getRoles());
                 context.getClaims().claim("given_name", ((User) authentication.getPrincipal()).getFirstName());
                 context.getClaims().claim("family_name", ((User) authentication.getPrincipal()).getLastName());
                 context.getClaims().claim("email", ((User) authentication.getPrincipal()).getEmail());
