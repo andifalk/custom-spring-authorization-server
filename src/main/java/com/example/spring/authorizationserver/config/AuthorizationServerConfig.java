@@ -17,6 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabase;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -35,6 +36,7 @@ import org.springframework.security.oauth2.server.authorization.JwtEncodingConte
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenCustomizer;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
@@ -266,35 +268,39 @@ public class AuthorizationServerConfig {
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer() {
         return context -> {
-            UsernamePasswordAuthenticationToken authentication = context.getPrincipal();
-            LOGGER.info("Customizing {} for user {}", context.getTokenType(), authentication.getPrincipal());
-            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
+            Object principal = context.getPrincipal();
+            AbstractAuthenticationToken authentication;
+            if (principal instanceof UsernamePasswordAuthenticationToken) {
+                authentication = (UsernamePasswordAuthenticationToken) principal;
+                User user = (User) authentication.getPrincipal();
+                final List<String> roles = new ArrayList<>(user.getRoles());
+                if (!OAuth2TokenType.REFRESH_TOKEN.equals(context.getTokenType())) {
+                    context.getClaims().claims(m -> {
+                        Set<String> existingScopes = (Set<String>) m.get("scope");
+                        Set<String> additional = new HashSet<>(roles);
+                        if (existingScopes != null) {
+                            additional.addAll(existingScopes);
+                        }
+                        m.replace("scope", additional);
+                    });
+                    context.getClaims().subject(user.getIdentifier().toString());
+                    context.getClaims().claim("given_name", user.getFirstName());
+                    context.getClaims().claim("family_name", user.getLastName());
+                    context.getClaims().claim("email", user.getEmail());
+                    context.getClaims().claim("roles", roles);
+                }
+            } else {
+                authentication = (OAuth2ClientAuthenticationToken) principal;
+            }
+            LOGGER.info("Customizing {} for principal {}", context.getTokenType(), authentication.getPrincipal());
+            if (!OAuth2TokenType.REFRESH_TOKEN.equals(context.getTokenType())) {
                 context.getHeaders().header("typ", "jwt");
+            }
+            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
                 List<String> audience = new ArrayList<>();
                 audience.add("http://localhost:9090/api/todos");
                 audience.add("library");
                 context.getClaims().audience(audience);
-                context.getClaims().claims(m -> {
-                    Set<String> existingScopes = (Set<String>) m.get("scope");
-                    Set<String> additional = new HashSet<>();
-                    additional.addAll(((User) authentication.getPrincipal()).getRoles());
-                    additional.addAll(existingScopes);
-                    m.replace("scope", additional);
-                });
-                context.getClaims().subject(((User) authentication.getPrincipal()).getIdentifier().toString());
-                context.getClaims().claim("roles", ((User) authentication.getPrincipal()).getRoles());
-                context.getClaims().claim("given_name", ((User) authentication.getPrincipal()).getFirstName());
-                context.getClaims().claim("family_name", ((User) authentication.getPrincipal()).getLastName());
-                context.getClaims().claim("email", ((User) authentication.getPrincipal()).getEmail());
-            } else if (OAuth2TokenType.REFRESH_TOKEN.equals(context.getTokenType())) {
-                // Nothing to do here
-            } else {
-                context.getHeaders().header("typ", "jwt");
-                context.getClaims().subject(((User) authentication.getPrincipal()).getIdentifier().toString());
-                context.getClaims().claim("roles", ((User) authentication.getPrincipal()).getRoles());
-                context.getClaims().claim("given_name", ((User) authentication.getPrincipal()).getFirstName());
-                context.getClaims().claim("family_name", ((User) authentication.getPrincipal()).getLastName());
-                context.getClaims().claim("email", ((User) authentication.getPrincipal()).getEmail());
             }
         };
     }
