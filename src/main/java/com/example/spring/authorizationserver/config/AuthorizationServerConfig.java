@@ -45,6 +45,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -92,7 +93,7 @@ public class AuthorizationServerConfig {
                                     claims.put("family_name", jwtAuthenticationToken.getToken().getClaim("family_name"));
                                     claims.put("given_name", jwtAuthenticationToken.getToken().getClaim("given_name"));
                                     claims.put("email", jwtAuthenticationToken.getToken().getClaim("email"));
-                                    claims.put("roles", jwtAuthenticationToken.getToken().getClaim("roles"));
+                                    claims.put("roles", new ArrayList<>(jwtAuthenticationToken.getToken().getClaim("roles")));
                                     return new OidcUserInfo(claims);
                                 }))
         );
@@ -269,7 +270,10 @@ public class AuthorizationServerConfig {
             LOGGER.info("Customizing {} for user {}", context.getTokenType(), authentication.getPrincipal());
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
                 context.getHeaders().header("typ", "jwt");
-                context.getClaims().audience(List.of("http://localhost:9090/api/todos", "library"));
+                List<String> audience = new ArrayList<>();
+                audience.add("http://localhost:9090/api/todos");
+                audience.add("library");
+                context.getClaims().audience(audience);
                 context.getClaims().claims(m -> {
                     Set<String> existingScopes = (Set<String>) m.get("scope");
                     Set<String> additional = new HashSet<>();
