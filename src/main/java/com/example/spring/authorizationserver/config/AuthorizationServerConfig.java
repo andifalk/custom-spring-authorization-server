@@ -1,7 +1,6 @@
 package com.example.spring.authorizationserver.config;
 
 import com.example.spring.authorizationserver.jose.Jwks;
-import com.example.spring.authorizationserver.user.User;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
@@ -17,9 +16,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabase;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,29 +28,25 @@ import org.springframework.security.oauth2.server.authorization.JdbcOAuth2Author
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
-import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.server.authorization.oidc.authentication.OidcUserInfoAuthenticationContext;
+import org.springframework.security.oauth2.server.authorization.oidc.authentication.OidcUserInfoAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
-import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 
 @Configuration(proxyBeanMethods = false)
 public class AuthorizationServerConfig {
@@ -78,33 +70,35 @@ public class AuthorizationServerConfig {
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE + 1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
-        OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
-        http.getConfigurer(OAuth2AuthorizationServerConfigurer.class)
-                .oidc(Customizer.withDefaults());	// Enable OpenID Connect 1.0
+        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
+                new OAuth2AuthorizationServerConfigurer();
+        RequestMatcher endpointsMatcher = authorizationServerConfigurer
+                .getEndpointsMatcher();
 
-        /*
-        authorizationServerConfigurer.oidc(
-                oidcConfigurer ->
-                        oidcConfigurer.userInfoEndpoint(oidcUserInfoEndpointConfigurer ->
-                                oidcUserInfoEndpointConfigurer.userInfoMapper(ac -> {
-                                    Map<String, Object> claims = new HashMap<>();
-                                    JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) ac.getAuthentication().getPrincipal();
-                                    claims.put("sub", jwtAuthenticationToken.getToken().getSubject());
-                                    claims.put("name", jwtAuthenticationToken.getToken().getClaim("given_name") + " " +
-                                            jwtAuthenticationToken.getToken().getClaim("family_name"));
-                                    claims.put("family_name", jwtAuthenticationToken.getToken().getClaim("family_name"));
-                                    claims.put("given_name", jwtAuthenticationToken.getToken().getClaim("given_name"));
-                                    claims.put("email", jwtAuthenticationToken.getToken().getClaim("email"));
-                                    claims.put("roles", new ArrayList<>(jwtAuthenticationToken.getToken().getClaim("roles")));
-                                    return new OidcUserInfo(claims);
-                                }))
-        );*/
+        Function<OidcUserInfoAuthenticationContext, OidcUserInfo> userInfoMapper = (context) -> {
+            OidcUserInfoAuthenticationToken authentication = context.getAuthentication();
+            JwtAuthenticationToken principal = (JwtAuthenticationToken) authentication.getPrincipal();
 
+            return new OidcUserInfo(principal.getToken().getClaims());
+        };
+
+        authorizationServerConfigurer
+                .oidc((oidc) -> oidc
+                        .userInfoEndpoint((userInfo) -> userInfo
+                                .userInfoMapper(userInfoMapper)
+                        )
+                );
         http
+                .securityMatcher(endpointsMatcher)
+                .authorizeHttpRequests((authorize) -> authorize
+                        .anyRequest().authenticated()
+                )
+                .csrf(csrf -> csrf.ignoringRequestMatchers(endpointsMatcher))
                 .exceptionHandling(exceptions ->
                         exceptions.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
                 )
-                .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
+                .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt)
+                .apply(authorizationServerConfigurer);
         return http.build();
     }
 
