@@ -5,6 +5,10 @@
 
 Customized from sample at [https://github.com/spring-projects/spring-authorization-server](https://github.com/spring-projects/spring-authorization-server).
 
+## Requirements
+
+To run this server you need at least a Java 17 runtime as this project uses spring boot 3.x.
+
 ## Usage
 
 Start the server by running the class _com.example.spring.authorizationserver.SpringAuthorizationServerApplication_.
@@ -48,11 +52,11 @@ __Please note__: Instead of _localhost_ the local ip _127.0.0.1_ is configured a
 This server already has preconfigured users.
 Therefore, to login please use one of these predefined credentials:
 
-| Username | Email                    | Password | Role   |
-| ---------| ------------------------ | -------- |--------|
-| bwayne   | bruce.wayne@example.com  | wayne    | USER   |
-| ckent    | clark.kent@example.com   | kent     | USER   |
-| pparker  | peter.parker@example.com | parker   | ADMIN  |
+| Username | Email                    | Password | Roles       |
+| ---------| ------------------------ | -------- |-------------|
+| bwayne   | bruce.wayne@example.com  | wayne    | USER        |
+| ckent    | clark.kent@example.com   | kent     | USER        |
+| pparker  | peter.parker@example.com | parker   | USER, ADMIN |
 
 ## Postman
 
@@ -64,68 +68,83 @@ The collections (for both JWT and Opaque tokens) can be found in the _postman_ f
 The authorization server uses a persistent H2 (in-memory) storage for configuration and stored tokens.
 
 You may have a look inside the data using the [H2 console](http://localhost:9000/h2-console).
-Please use ```jdbc:h2:mem:authzserver``` as jdbc url and _sa_ as user name, leave password empty.
+Please use ```jdbc:h2:mem:authzserver``` as jdbc url and _sa_ as username, leave password empty.
 
 ## Customizations
 
-In the class _com.example.spring.authorizationserver.config.AuthorizationServerConfig_ you find some customizations.
-As currently there is no documentation available for spring authorization server this may be helpful information.
+This customized version contains an extended `user` object compared to the standard spring security `user` object.
+The contents of id and access tokens and user info endpoint information is customized for extended user data as well.
+
+Check the spring [authorization server reference docs](https://docs.spring.io/spring-authorization-server/docs/current/reference/html/guides/how-to-userinfo.html) for more information.
 
 ### Configure information returned to the userinfo endpoint
 
+__com.example.spring.authorizationserver.config.AuthorizationServerConfig:__
+
 ```java
-authorizationServerConfigurer.oidc(
-                oidcConfigurer ->
-                        oidcConfigurer.userInfoEndpoint(oidcUserInfoEndpointConfigurer ->
-                                oidcUserInfoEndpointConfigurer.userInfoMapper(ac -> {
-                                    Map<String, Object> claims = new HashMap<>();
-                                    JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) ac.getAuthentication().getPrincipal();
-                                    claims.put("sub", jwtAuthenticationToken.getToken().getSubject());
-                                    claims.put("name", jwtAuthenticationToken.getToken().getClaim("given_name") + " " +
-                                            jwtAuthenticationToken.getToken().getClaim("family_name"));
-                                    claims.put("family_name", jwtAuthenticationToken.getToken().getClaim("family_name"));
-                                    claims.put("given_name", jwtAuthenticationToken.getToken().getClaim("given_name"));
-                                    claims.put("email", jwtAuthenticationToken.getToken().getClaim("email"));
-                                    claims.put("roles", jwtAuthenticationToken.getToken().getClaim("roles"));
-                                    return new OidcUserInfo(claims);
-                                }))
-        );
+@Configuration(proxyBeanMethods = false)
+public class AuthorizationServerConfig {
+    @Bean
+    @Order(Ordered.HIGHEST_PRECEDENCE + 1)
+    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
+                new OAuth2AuthorizationServerConfigurer();
+        RequestMatcher endpointsMatcher = authorizationServerConfigurer
+                .getEndpointsMatcher();
+
+        Function<OidcUserInfoAuthenticationContext, OidcUserInfo> userInfoMapper = (context) -> {
+            OidcUserInfoAuthenticationToken authentication = context.getAuthentication();
+            JwtAuthenticationToken principal = (JwtAuthenticationToken) authentication.getPrincipal();
+
+            return new OidcUserInfo(principal.getToken().getClaims());
+        };
+
+        authorizationServerConfigurer
+                .oidc((oidc) -> oidc
+                        .userInfoEndpoint((userInfo) -> userInfo
+                                .userInfoMapper(userInfoMapper)
+                        )
+                );
+        http
+                .securityMatcher(endpointsMatcher)
+                .authorizeHttpRequests((authorize) -> authorize
+                        .anyRequest().authenticated()
+                )
+                .csrf(csrf -> csrf.ignoringRequestMatchers(endpointsMatcher))
+                .exceptionHandling(exceptions ->
+                        exceptions.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
+                )
+                .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt)
+                .apply(authorizationServerConfigurer);
+        return http.build();
+    }
+}
 ```
 
-### Customize id, access and refresh token contents
+### Customize id and access token contents
 
 ```java
-@Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer() {
-        return context -> {
-            UsernamePasswordAuthenticationToken authentication = context.getPrincipal();
-            LOGGER.info("Customizing {} for user {}", context.getTokenType(), authentication.getPrincipal());
-            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
-                context.getHeaders().header("typ", "jwt");
-                context.getClaims().subject(((User) authentication.getPrincipal()).getIdentifier().toString());
-                context.getClaims().claim("roles", ((User) authentication.getPrincipal()).getRoles());
-                context.getClaims().claim("given_name", ((User) authentication.getPrincipal()).getFirstName());
-                context.getClaims().claim("family_name", ((User) authentication.getPrincipal()).getLastName());
-                context.getClaims().claim("email", ((User) authentication.getPrincipal()).getEmail());
-            } else if (OAuth2TokenType.REFRESH_TOKEN.equals(context.getTokenType())) {
-                // Nothing to do here
-            } else {
-                context.getHeaders().header("typ", "jwt");
-                context.getClaims().subject(((User) authentication.getPrincipal()).getIdentifier().toString());
-                context.getClaims().claim("roles", ((User) authentication.getPrincipal()).getRoles());
-                context.getClaims().claim("given_name", ((User) authentication.getPrincipal()).getFirstName());
-                context.getClaims().claim("family_name", ((User) authentication.getPrincipal()).getLastName());
-                context.getClaims().claim("email", ((User) authentication.getPrincipal()).getEmail());
+@Configuration
+public class JwtTokenCustomizerConfig {
+    @Bean
+    public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer(OidcUserInfoService userInfoService) {
+        return (context) -> {
+            if (ID_TOKEN.equals(context.getTokenType().getValue()) || ACCESS_TOKEN.equals(context.getTokenType())) {
+                OidcUserInfo userInfo = userInfoService.loadUser(
+                        context.getPrincipal().getName());
+                context.getClaims().claims(claims ->
+                        claims.putAll(userInfo.getClaims()));
             }
         };
     }
+}
 ```
 
 ## Feedback
 
 Any feedback on this project is highly appreciated.
 
-Just send an email to _andreas.falk(at)novatec-gmbh.de_ or contact me via Twitter (_@andifalk_).
+Just email _andreas.falk(at)novatec-gmbh.de_ or contact me via Twitter (_@andifalk_).
 
 ## License
 
