@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("unused")
 @JsonAutoDetect
 public class User implements UserDetails {
 
@@ -25,7 +26,8 @@ public class User implements UserDetails {
 
     private Set<String> roles = new HashSet<>();
 
-    public User() {}
+    public User() {
+    }
 
     public User(UUID identifier, String username, String password, String firstName, String lastName, String email, Set<String> roles) {
         this.identifier = identifier;
@@ -72,7 +74,8 @@ public class User implements UserDetails {
         return AuthorityUtils.commaSeparatedStringToAuthorityList(getRoles().stream().map(r -> "ROLE_" + r).collect(Collectors.joining()));
     }
 
-    public void setAuthorities(Collection<? extends GrantedAuthority> authorities) {}
+    public void setAuthorities(Collection<? extends GrantedAuthority> authorities) {
+    }
 
     @Override
     public String getPassword() {
