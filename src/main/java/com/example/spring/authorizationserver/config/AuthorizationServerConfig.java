@@ -257,48 +257,4 @@ public class AuthorizationServerConfig {
                 .build();
         // @formatter:on
     }
-
-    /*
-     * Customizes token contents for this authz server.
-     */
-    /*
-    @Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer() {
-        return context -> {
-            Object principal = context.getPrincipal();
-            AbstractAuthenticationToken authentication;
-            if (principal instanceof UsernamePasswordAuthenticationToken) {
-                authentication = (UsernamePasswordAuthenticationToken) principal;
-                User user = (User) authentication.getPrincipal();
-                final List<String> roles = new ArrayList<>(user.getRoles());
-                if (!OAuth2TokenType.REFRESH_TOKEN.equals(context.getTokenType())) {
-                    context.getClaims().claims(m -> {
-                        Set<String> existingScopes = (Set<String>) m.get("scope");
-                        Set<String> additional = new HashSet<>(roles);
-                        if (existingScopes != null) {
-                            additional.addAll(existingScopes);
-                        }
-                        m.replace("scope", additional);
-                    });
-                    context.getClaims().subject(user.getIdentifier().toString());
-                    context.getClaims().claim("given_name", user.getFirstName());
-                    context.getClaims().claim("family_name", user.getLastName());
-                    context.getClaims().claim("email", user.getEmail());
-                    context.getClaims().claim("roles", roles);
-                }
-            } else {
-                authentication = (OAuth2ClientAuthenticationToken) principal;
-            }
-            LOGGER.info("Customizing {} for principal {}", context.getTokenType(), authentication.getPrincipal());
-            if (!OAuth2TokenType.REFRESH_TOKEN.equals(context.getTokenType())) {
-                context.getHeaders().header("typ", "jwt");
-            }
-            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
-                List<String> audience = new ArrayList<>();
-                audience.add("http://localhost:9090/api/todos");
-                audience.add("library");
-                context.getClaims().audience(audience);
-            }
-        };
-    }*/
 }
