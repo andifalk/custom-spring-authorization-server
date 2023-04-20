@@ -53,7 +53,7 @@ This server already has preconfigured users.
 Therefore, to login please use one of these predefined credentials:
 
 | Username | Email                    | Password | Roles       |
-| ---------| ------------------------ | -------- |-------------|
+|----------|--------------------------|----------|-------------|
 | bwayne   | bruce.wayne@example.com  | wayne    | USER        |
 | ckent    | clark.kent@example.com   | kent     | USER        |
 | pparker  | peter.parker@example.com | parker   | USER, ADMIN |

@@ -74,9 +74,6 @@ public class User implements UserDetails {
         return AuthorityUtils.commaSeparatedStringToAuthorityList(getRoles().stream().map(r -> "ROLE_" + r).collect(Collectors.joining()));
     }
 
-    public void setAuthorities(Collection<? extends GrantedAuthority> authorities) {
-    }
-
     @Override
     public String getPassword() {
         return password;
