@@ -44,7 +44,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -107,6 +109,15 @@ public class AuthorizationServerConfig {
      */
     @Bean
     public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
+        Set<String> redirectUris = new HashSet<>();
+        redirectUris.add("http://127.0.0.1:9095/client/callback");
+        redirectUris.add("http://127.0.0.1:9095/client");
+        redirectUris.add("http://127.0.0.1:9095/client/login/oauth2/code/spring");
+        redirectUris.add("http://localhost:9095/client/callback");
+        redirectUris.add("http://localhost:9095/client");
+        redirectUris.add("http://localhost:9095/client/login/oauth2/code/spring");
+        redirectUris.add("https://oauth.pstmn.io/v1/callback");
+
         RegisteredClient demoClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("demo-client")
                 .clientSecret(passwordEncoder.encode("secret"))
@@ -119,15 +130,9 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .redirectUri("http://127.0.0.1:9095/client/callback")
-                .redirectUri("http://127.0.0.1:9095/client/authorized")
-                .redirectUri("http://127.0.0.1:9095/client")
-                .redirectUri("http://127.0.0.1:9095/client/login/oauth2/code/spring")
-                .redirectUri("http://localhost:9095/client/callback")
-                .redirectUri("http://localhost:9095/client/authorized")
-                .redirectUri("http://localhost:9095/client")
-                .redirectUri("http://localhost:9095/client/login/oauth2/code/spring")
-                .redirectUri("https://oauth.pstmn.io/v1/callback")
+                .redirectUris(uris -> {
+                    uris.addAll(redirectUris);
+                })
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
                 )))
@@ -145,15 +150,9 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .redirectUri("http://127.0.0.1:9095/client/callback")
-                .redirectUri("http://127.0.0.1:9095/client/authorized")
-                .redirectUri("http://127.0.0.1:9095/client")
-                .redirectUri("http://127.0.0.1:9095/client/login/oauth2/code/spring")
-                .redirectUri("http://localhost:9095/client/callback")
-                .redirectUri("http://localhost:9095/client/authorized")
-                .redirectUri("http://localhost:9095/client")
-                .redirectUri("http://localhost:9095/client/login/oauth2/code/spring")
-                .redirectUri("https://oauth.pstmn.io/v1/callback")
+                .redirectUris(uris -> {
+                    uris.addAll(redirectUris);
+                })
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
                 )))
@@ -173,15 +172,9 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE).build())
-                .redirectUri("http://127.0.0.1:9095/client/callback")
-                .redirectUri("http://127.0.0.1:9095/client/authorized")
-                .redirectUri("http://127.0.0.1:9095/client")
-                .redirectUri("http://127.0.0.1:9095/client/login/oauth2/code/spring")
-                .redirectUri("http://localhost:9095/client/callback")
-                .redirectUri("http://localhost:9095/client/authorized")
-                .redirectUri("http://localhost:9095/client")
-                .redirectUri("http://localhost:9095/client/login/oauth2/code/spring")
-                .redirectUri("https://oauth.pstmn.io/v1/callback")
+                .redirectUris(uris -> {
+                    uris.addAll(redirectUris);
+                })
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
                 )))
@@ -201,15 +194,9 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE).build())
-                .redirectUri("http://127.0.0.1:9095/client/callback")
-                .redirectUri("http://127.0.0.1:9095/client/authorized")
-                .redirectUri("http://127.0.0.1:9095/client")
-                .redirectUri("http://127.0.0.1:9095/client/login/oauth2/code/spring")
-                .redirectUri("http://localhost:9095/client/callback")
-                .redirectUri("http://localhost:9095/client/authorized")
-                .redirectUri("http://localhost:9095/client")
-                .redirectUri("http://localhost:9095/client/login/oauth2/code/spring")
-                .redirectUri("https://oauth.pstmn.io/v1/callback")
+                .redirectUris(uris -> {
+                    uris.addAll(redirectUris);
+                })
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
                 )))
