@@ -112,9 +112,11 @@ public class AuthorizationServerConfig {
         Set<String> redirectUris = new HashSet<>();
         redirectUris.add("http://127.0.0.1:9095/client/callback");
         redirectUris.add("http://127.0.0.1:9095/client");
+        redirectUris.add("http://127.0.0.1:9090/login/oauth2/code/spring");
         redirectUris.add("http://127.0.0.1:9095/client/login/oauth2/code/spring");
         redirectUris.add("http://localhost:9095/client/callback");
         redirectUris.add("http://localhost:9095/client");
+        redirectUris.add("http://localhost:9090/login/oauth2/code/spring");
         redirectUris.add("http://localhost:9095/client/login/oauth2/code/spring");
         redirectUris.add("https://oauth.pstmn.io/v1/callback");
 
