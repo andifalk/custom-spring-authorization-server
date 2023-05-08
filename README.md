@@ -140,6 +140,12 @@ public class JwtTokenCustomizerConfig {
 }
 ```
 
+## Testing the Authorization Server
+
+For testing this authorization server with client- or server applications please use the corresponding GitHub repository for [Custom Spring Authorization Server Samples](https://github.com/andifalk/custom-spring-authorization-server-samples).
+
+This includes a demo OAuth client and resource server.
+
 ## Feedback
 
 Any feedback on this project is highly appreciated.
