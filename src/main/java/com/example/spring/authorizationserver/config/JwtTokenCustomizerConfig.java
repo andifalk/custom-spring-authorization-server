@@ -22,6 +22,7 @@ public class JwtTokenCustomizerConfig {
                             context.getPrincipal().getName());
                     context.getClaims().claims(claims ->
                             claims.putAll(userInfo.getClaims()));
+                    context.getJwsHeader().type("jwt");
                 }
             }
         };
