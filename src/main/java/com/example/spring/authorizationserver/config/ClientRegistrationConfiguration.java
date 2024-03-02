@@ -26,10 +26,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat.SELF_CONTAINED;
+
 @Configuration
 public class ClientRegistrationConfiguration {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ClientRegistrationConfiguration.class);
+    private static final String SCOPE_OFFLINE_ACCESS = "offline_access";
+    private static final String CLIENT_SECRET = "secret";
 
     /*
      * Repository with all registered OAuth/OIDC clients.
@@ -40,59 +44,49 @@ public class ClientRegistrationConfiguration {
 
         RegisteredClient demoClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("demo-client")
-                .clientSecret(passwordEncoder.encode("secret"))
+                .clientSecret(passwordEncoder.encode(CLIENT_SECRET))
                 .clientAuthenticationMethods(methods -> methods.addAll(
                         List.of(
                                 ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
-                                ClientAuthenticationMethod.CLIENT_SECRET_POST,
-                                ClientAuthenticationMethod.NONE
+                                ClientAuthenticationMethod.CLIENT_SECRET_POST
                         )))
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+                .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
                         .accessTokenTimeToLive(Duration.ofMinutes(15))
                         .authorizationCodeTimeToLive(Duration.ofMinutes(2)).build())
-                .redirectUris(uris -> {
-                    uris.addAll(redirectUris);
-                })
+                .redirectUris(uris -> uris.addAll(redirectUris))
                 .scopes(scopes -> scopes.addAll(List.of(
-                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
+                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
                 )))
                 .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
                 .build();
 
         RegisteredClient demoClientPkce = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("demo-client-pkce")
-                .clientAuthenticationMethods(methods -> methods.addAll(
-                        List.of(
-                                ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
-                                ClientAuthenticationMethod.CLIENT_SECRET_POST,
-                                ClientAuthenticationMethod.NONE
-                        )))
+                .clientAuthenticationMethods(methods -> methods.add(
+                        ClientAuthenticationMethod.NONE
+                ))
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+                .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
                         .accessTokenTimeToLive(Duration.ofMinutes(15))
                         .authorizationCodeTimeToLive(Duration.ofMinutes(2)).build())
-                .redirectUris(uris -> {
-                    uris.addAll(redirectUris);
-                })
+                .redirectUris(uris -> uris.addAll(redirectUris))
                 .scopes(scopes -> scopes.addAll(List.of(
-                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
+                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
                 )))
                 .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
                 .build();
 
         RegisteredClient demoClientOpaque = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("demo-client-opaque")
-                .clientSecret(passwordEncoder.encode("secret"))
+                .clientSecret(passwordEncoder.encode(CLIENT_SECRET))
                 .clientAuthenticationMethods(methods -> methods.addAll(
                         List.of(
                                 ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
-                                ClientAuthenticationMethod.CLIENT_SECRET_POST,
-                                ClientAuthenticationMethod.NONE
+                                ClientAuthenticationMethod.CLIENT_SECRET_POST
                         )))
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
@@ -100,27 +94,20 @@ public class ClientRegistrationConfiguration {
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE)
                         .accessTokenTimeToLive(Duration.ofMinutes(15))
                         .authorizationCodeTimeToLive(Duration.ofMinutes(2)).build())
-                .redirectUris(uris -> {
-                    uris.addAll(redirectUris);
-                })
+                .redirectUris(uris -> uris.addAll(redirectUris))
                 .scopes(scopes -> scopes.addAll(List.of(
-                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
+                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
                 )))
                 .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
                 .build();
 
         RegisteredClient demoClientPkceOpaque = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("demo-client-pkce-opaque")
-                .clientSecret(passwordEncoder.encode("secret"))
-                .clientAuthenticationMethods(methods -> methods.addAll(
-                        List.of(
-                                ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
-                                ClientAuthenticationMethod.CLIENT_SECRET_POST,
-                                ClientAuthenticationMethod.NONE
-                        )))
+                .clientAuthenticationMethods(methods -> methods.add(
+                        ClientAuthenticationMethod.NONE
+                ))
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE)
                         .accessTokenTimeToLive(Duration.ofMinutes(15))
                         .authorizationCodeTimeToLive(Duration.ofMinutes(2)).build())
@@ -128,7 +115,7 @@ public class ClientRegistrationConfiguration {
                     uris.addAll(redirectUris);
                 })
                 .scopes(scopes -> scopes.addAll(List.of(
-                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "offline_access"
+                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
                 )))
                 .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
                 .build();

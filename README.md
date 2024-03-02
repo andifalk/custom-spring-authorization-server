@@ -30,12 +30,12 @@ These are the most important configuration settings:
 
 This server comes with predefined registered OAuth2/OIDC clients:
 
-| Client ID               | Client-Secret | PKCE | Access Token Format |
-|-------------------------|---------------|------|---------------------|
-| demo-client             | secret        | --   | JWT                 |
-| demo-client-pkce        | secret        | X    | JWT                 |
-| demo-client-opaque      | secret        | --   | Opaque              |
-| demo-client-pkce-opaque | secret        | X    | Opaque              |
+| Client ID               | Client-Secret | PKCE | Client-Credentials Grant | Access Token Format |
+|-------------------------|---------------|------|--------------------------|---------------------|
+| demo-client             | secret        | --   | X                        | JWT                 |
+| demo-client-pkce        | --            | X    | --                       | JWT                 |
+| demo-client-opaque      | secret        | --   | X                        | Opaque              |
+| demo-client-pkce-opaque | --            | X    | --                       | Opaque              |
 
 All clients have configured the following redirect URIs (including a special one for postman):
 
