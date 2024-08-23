@@ -1,5 +1,5 @@
 [![License](https://img.shields.io/badge/License-Apache%20License%202.0-brightgreen.svg)][1]
-![Java CI with Gradle](https://github.com/andifalk/custom-spring-authorization-server/workflows/build.yml/badge.svg)
+![Build with Maven](https://github.com/andifalk/custom-spring-authorization-server/workflows/build.yml/badge.svg)
 ![Code QL](https://github.com/andifalk/custom-spring-authorization-server/workflows/codeql.yml/badge.svg)
 
 # Spring Authorization Server
