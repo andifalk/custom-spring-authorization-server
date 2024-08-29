@@ -1,14 +1,13 @@
 package com.example.spring.authorizationserver.security;
 
 import com.example.spring.authorizationserver.user.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
-import org.springframework.stereotype.Service;
 
-@Service
 public class OidcUserInfoService {
-    private final AuthorizationServerUserDetailsService userDetailsService;
+    private final UserDetailsService userDetailsService;
 
-    public OidcUserInfoService(AuthorizationServerUserDetailsService userDetailsService) {
+    public OidcUserInfoService(UserDetailsService userDetailsService) {
         this.userDetailsService = userDetailsService;
     }
 

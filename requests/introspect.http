@@ -1,0 +1,7 @@
+### GET request to example server
+POST http://localhost:9000/oauth2/introspect
+Content-Type: application/x-www-form-urlencoded
+Authorization: Basic {{clientid}} {{clientsecret}}
+
+token=YiEkbll5Prgjqivw5qZcVj8-8bYaCZNwQ3ws-rx3YS_Sa6ZLk5bjYFV7wkGEgsa4qRPrO_iDDlVgPEXkTKelgCq_9LuvGQpjMzMwBqhj7KyTBkKCtr-C7aEH_zmSoM2J
+###

@@ -8,11 +8,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
 
 import java.util.*;
 
-@Service
 public class AuthorizationServerUserDetailsService implements UserDetailsService {
 
     public static final String WAYNE_ID = "c52bf7db-db55-4f89-ac53-82b40e8c57c2";
@@ -22,7 +20,8 @@ public class AuthorizationServerUserDetailsService implements UserDetailsService
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizationServerUserDetailsService.class);
 
     private final PasswordEncoder passwordEncoder;
-    private final Map<String, User> users = new HashMap<>();
+    private final Map<String, User> usersByUsername = new HashMap<>();
+    private final Map<String, User> usersByIdentifier = new HashMap<>();
 
     public AuthorizationServerUserDetailsService(PasswordEncoder passwordEncoder) {
         this.passwordEncoder = passwordEncoder;
@@ -43,21 +42,27 @@ public class AuthorizationServerUserDetailsService implements UserDetailsService
         pParkerRoles.add("ADMIN");
         User pParker = new User(UUID.fromString(PARKER_ID), "pparker", passwordEncoder.encode("parker"),
                 "Peter", "Parker", "peter.parker@example.com", pParkerRoles);
-        users.put("bwayne", bWayne);
-        users.put("ckent", cKent);
-        users.put("pparker", pParker);
+        usersByUsername.put("bwayne", bWayne);
+        usersByUsername.put("ckent", cKent);
+        usersByUsername.put("pparker", pParker);
+
+        usersByIdentifier.put(WAYNE_ID, bWayne);
+        usersByIdentifier.put(KENT_ID, cKent);
+        usersByIdentifier.put(PARKER_ID, pParker);
 
         LOGGER.info("Initialized users {}, {} and {}", bWayne, cKent, pParker);
     }
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        if (users.containsKey(username)) {
-            LOGGER.info("Found user for {}", username);
-            return users.get(username);
+    public UserDetails loadUserByUsername(String usernameOrIdentifier) throws UsernameNotFoundException {
+        if (usersByUsername.containsKey(usernameOrIdentifier)) {
+            LOGGER.info("Found user for {}", usernameOrIdentifier);
+            return usersByUsername.get(usernameOrIdentifier);
+        } else if (usersByIdentifier.containsKey(usernameOrIdentifier)) {
+            return usersByIdentifier.get(usernameOrIdentifier);
         } else {
-            LOGGER.warn("No user found for {}", username);
-            throw new UsernameNotFoundException("No user found for " + username);
+            LOGGER.warn("No user found for {}", usernameOrIdentifier);
+            throw new UsernameNotFoundException("No user found for " + usernameOrIdentifier);
         }
     }
 }

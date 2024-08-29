@@ -4,16 +4,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
-import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
-import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
-import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
-import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
-import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
@@ -39,7 +34,7 @@ public class ClientRegistrationConfiguration {
      * Repository with all registered OAuth/OIDC clients.
      */
     @Bean
-    public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
+    public RegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
         Set<String> redirectUris = getRedirectUris();
 
         RegisteredClient demoClient = RegisteredClient.withId(UUID.randomUUID().toString())
@@ -65,9 +60,14 @@ public class ClientRegistrationConfiguration {
 
         RegisteredClient demoClientPkce = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("demo-client-pkce")
-                .clientAuthenticationMethods(methods -> methods.add(
-                        ClientAuthenticationMethod.NONE
-                ))
+                .clientSecret(passwordEncoder.encode(CLIENT_SECRET))
+                .clientAuthenticationMethods(methods -> methods.addAll(
+                        List.of(
+                                ClientAuthenticationMethod.NONE,
+                                ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
+                                ClientAuthenticationMethod.CLIENT_SECRET_POST
+                        ))
+                )
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
@@ -103,8 +103,13 @@ public class ClientRegistrationConfiguration {
 
         RegisteredClient demoClientPkceOpaque = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("demo-client-pkce-opaque")
-                .clientAuthenticationMethods(methods -> methods.add(
-                        ClientAuthenticationMethod.NONE
+                .clientSecret(passwordEncoder.encode(CLIENT_SECRET))
+                .clientAuthenticationMethods(methods -> methods.addAll(
+                        List.of(
+                            ClientAuthenticationMethod.NONE,
+                            ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
+                            ClientAuthenticationMethod.CLIENT_SECRET_POST
+                        )
                 ))
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
@@ -120,26 +125,10 @@ public class ClientRegistrationConfiguration {
                 .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
                 .build();
 
-        // Save registered client in db as if in-memory
-        JdbcRegisteredClientRepository registeredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
-        registeredClientRepository.save(demoClient);
-        registeredClientRepository.save(demoClientPkce);
-        registeredClientRepository.save(demoClientOpaque);
-        registeredClientRepository.save(demoClientPkceOpaque);
-
         LOGGER.info("Registered OAuth2/OIDC clients");
 
-        return registeredClientRepository;
-    }
-
-    @Bean
-    public OAuth2AuthorizationService authorizationService(JdbcTemplate jdbcTemplate, RegisteredClientRepository registeredClientRepository) {
-        return new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository);
-    }
-
-    @Bean
-    public OAuth2AuthorizationConsentService authorizationConsentService(JdbcTemplate jdbcTemplate, RegisteredClientRepository registeredClientRepository) {
-        return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, registeredClientRepository);
+        // Save registered client in db as if in-memory
+        return new InMemoryRegisteredClientRepository(demoClient, demoClientPkce, demoClientOpaque, demoClientPkceOpaque);
     }
 
     private static Set<String> getRedirectUris() {
