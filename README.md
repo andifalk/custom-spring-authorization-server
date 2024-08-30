@@ -8,7 +8,7 @@ Customized from sample at [https://github.com/spring-projects/spring-authorizati
 
 ## Requirements
 
-To run this server you need at least a Java 17 runtime as this project uses spring boot 3.x.
+To run this server you need at least a Java 21 runtime as this project uses spring boot 3.x.
 
 ## Usage
 
@@ -44,9 +44,11 @@ All clients have configured the following redirect URIs (including a special one
 * http://127.0.0.1:9095/client/authorized
 * http://127.0.0.1:9095/client
 * http://127.0.0.1:9095/login/oauth2/code/spring-authz-server
+* http://localhost:9095/client/callback
+* http://localhost:9095/client/authorized
+* http://localhost:9095/client
+* http://localhost:9095/login/oauth2/code/spring-authz-server
 * https://oauth.pstmn.io/v1/callback
-
-__Please note__: Instead of _localhost_ the local ip _127.0.0.1_ is configured as redirect URI. This is because spring security does not allow redirects of clients to localhost addresses.
 
 ## Login
 
@@ -63,13 +65,6 @@ Therefore, to login please use one of these predefined credentials:
 
 You may use the provided postman collections to try the authorization server endpoints and the registered clients.
 The collections (for both JWT and Opaque tokens) can be found in the _postman_ folder.
-
-## Persistent Configuration Store
-
-The authorization server uses a persistent H2 (in-memory) storage for configuration and stored tokens.
-
-You may have a look inside the data using the [H2 console](http://localhost:9000/h2-console).
-Please use ```jdbc:h2:mem:authzserver``` as jdbc url and _sa_ as username, leave password empty.
 
 ## Customizations
 
@@ -88,35 +83,35 @@ public class AuthorizationServerConfig {
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE + 1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
-        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
-                new OAuth2AuthorizationServerConfigurer();
-        RequestMatcher endpointsMatcher = authorizationServerConfigurer
-                .getEndpointsMatcher();
-
         Function<OidcUserInfoAuthenticationContext, OidcUserInfo> userInfoMapper = (context) -> {
             OidcUserInfoAuthenticationToken authentication = context.getAuthentication();
-            JwtAuthenticationToken principal = (JwtAuthenticationToken) authentication.getPrincipal();
-
-            return new OidcUserInfo(principal.getToken().getClaims());
+            return new OidcUserInfo(oidcUserInfoService().loadUser(authentication.getName()).getClaims());
         };
 
-        authorizationServerConfigurer
-                .oidc((oidc) -> oidc
+        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
+        RequestMatcher endpointsMatcher = authorizationServerConfigurer.getEndpointsMatcher();
+        http.securityMatcher(endpointsMatcher).authorizeHttpRequests((authorize) ->
+                authorize.anyRequest().authenticated()).csrf((csrf) -> {
+            csrf.ignoringRequestMatchers(endpointsMatcher);
+        }).with(authorizationServerConfigurer, withDefaults());
+        authorizationServerConfigurer.oidc(
+                o -> o
+                        .providerConfigurationEndpoint(Customizer.withDefaults())
+                        .clientRegistrationEndpoint(Customizer.withDefaults())
                         .userInfoEndpoint((userInfo) -> userInfo
                                 .userInfoMapper(userInfoMapper)
                         )
-                );
+        );	// Enable OpenID Connect 1.0
+
         http
-                .securityMatcher(endpointsMatcher)
-                .authorizeHttpRequests((authorize) -> authorize
-                        .anyRequest().authenticated()
+                .exceptionHandling((exceptions) -> exceptions
+                        .defaultAuthenticationEntryPointFor(
+                                new LoginUrlAuthenticationEntryPoint("/login"),
+                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
+                        )
                 )
-                .csrf(csrf -> csrf.ignoringRequestMatchers(endpointsMatcher))
-                .exceptionHandling(exceptions ->
-                        exceptions.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
-                )
-                .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt)
-                .apply(authorizationServerConfigurer);
+                .oauth2ResourceServer((resourceServer) -> resourceServer
+                        .opaqueToken(Customizer.withDefaults()));
         return http.build();
     }
 }
@@ -130,11 +125,22 @@ public class JwtTokenCustomizerConfig {
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer(OidcUserInfoService userInfoService) {
         return (context) -> {
-            if (ID_TOKEN.equals(context.getTokenType().getValue()) || ACCESS_TOKEN.equals(context.getTokenType())) {
-                OidcUserInfo userInfo = userInfoService.loadUser(
-                        context.getPrincipal().getName());
-                context.getClaims().claims(claims ->
-                        claims.putAll(userInfo.getClaims()));
+            context.getJwsHeader().type("jwt");
+            if (!AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
+                if (ID_TOKEN.equals(context.getTokenType().getValue()) || ACCESS_TOKEN.equals(context.getTokenType())) {
+                    OidcUserInfo userInfo = userInfoService.loadUser(
+                            context.getPrincipal().getName());
+                    context.getClaims().claims(claims ->
+                            claims.putAll(userInfo.getClaims()));
+                    if (ACCESS_TOKEN.equals(context.getTokenType())) {
+                        context.getClaims().audience(
+                                List.of(
+                                        context.getRegisteredClient().getClientId(),
+                                        "demo-api"
+                                )
+                        );
+                    }
+                }
             }
         };
     }
@@ -143,7 +149,9 @@ public class JwtTokenCustomizerConfig {
 
 ## Testing the Authorization Server
 
-For testing this authorization server with client- or server applications please use the corresponding GitHub repository for [Custom Spring Authorization Server Samples](https://github.com/andifalk/custom-spring-authorization-server-samples).
+You may use the http client requests located in the `requests` folder if you are using IntelliJ.
+
+For testing this authorization server with client- or server applications, please use the corresponding GitHub repository for [Custom Spring Authorization Server Samples](https://github.com/andifalk/custom-spring-authorization-server-samples).
 
 This includes a demo OAuth client and resource server.
 
