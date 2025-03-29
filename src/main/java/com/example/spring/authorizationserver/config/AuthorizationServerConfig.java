@@ -36,17 +36,6 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @Configuration
 public class AuthorizationServerConfig {
 
-    @Order(1)
-    @Bean
-    SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .authorizeHttpRequests(authorize ->
-                        authorize.anyRequest().authenticated()
-                )
-                .formLogin(withDefaults());
-        return http.build();
-    }
-
     /*
      * Security config for all authz server endpoints.
      */
@@ -60,10 +49,7 @@ public class AuthorizationServerConfig {
 
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
         RequestMatcher endpointsMatcher = authorizationServerConfigurer.getEndpointsMatcher();
-        http.securityMatcher(endpointsMatcher).authorizeHttpRequests((authorize) ->
-                authorize.anyRequest().authenticated()).csrf((csrf) -> {
-            csrf.ignoringRequestMatchers(endpointsMatcher);
-        }).with(authorizationServerConfigurer, withDefaults());
+
         authorizationServerConfigurer.oidc(
                 o -> o
                         .providerConfigurationEndpoint(Customizer.withDefaults())
@@ -71,17 +57,36 @@ public class AuthorizationServerConfig {
                         .userInfoEndpoint((userInfo) -> userInfo
                                 .userInfoMapper(userInfoMapper)
                         )
-        );	// Enable OpenID Connect 1.0
+        );
 
-        http
+        http.securityMatcher(endpointsMatcher)
+                .authorizeHttpRequests(
+                        (authorize) -> authorize.anyRequest().authenticated()
+                )
+                .csrf(
+                        (csrf) -> csrf.ignoringRequestMatchers(endpointsMatcher)
+                )
+                .oauth2ResourceServer((resourceServer) -> resourceServer
+                        .opaqueToken(Customizer.withDefaults()))
                 .exceptionHandling((exceptions) -> exceptions
                         .defaultAuthenticationEntryPointFor(
                                 new LoginUrlAuthenticationEntryPoint("/login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
                         )
                 )
-                .oauth2ResourceServer((resourceServer) -> resourceServer
-                        .opaqueToken(Customizer.withDefaults()));
+                .with(authorizationServerConfigurer, withDefaults());
+
+        return http.build();
+    }
+
+    @Order(2)
+    @Bean
+    SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .authorizeHttpRequests(authorize ->
+                        authorize.anyRequest().authenticated()
+                )
+                .formLogin(withDefaults());
         return http.build();
     }
 
