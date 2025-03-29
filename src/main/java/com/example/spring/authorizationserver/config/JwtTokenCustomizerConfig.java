@@ -26,12 +26,14 @@ public class JwtTokenCustomizerConfig {
                     context.getClaims().claims(claims ->
                             claims.putAll(userInfo.getClaims()));
                     if (ACCESS_TOKEN.equals(context.getTokenType())) {
-                        context.getClaims().audience(
-                                List.of(
-                                        context.getRegisteredClient().getClientId(),
-                                        "demo-api"
-                                )
-                        );
+                        if (!AuthorizationGrantType.TOKEN_EXCHANGE.equals(context.getAuthorizationGrantType())) {
+                            context.getClaims().audience(
+                                    List.of(
+                                            context.getRegisteredClient().getClientId(),
+                                            "demo-api"
+                                    )
+                            );
+                        }
                     }
                 }
             }

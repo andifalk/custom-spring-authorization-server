@@ -30,6 +30,20 @@ public class ClientRegistrationConfiguration {
     private static final String SCOPE_OFFLINE_ACCESS = "offline_access";
     private static final String CLIENT_SECRET = "secret";
 
+    private static Set<String> getRedirectUris() {
+        Set<String> redirectUris = new HashSet<>();
+        redirectUris.add("http://127.0.0.1:9095/client/callback");
+        redirectUris.add("http://127.0.0.1:9095/client");
+        redirectUris.add("http://127.0.0.1:9090/login/oauth2/code/spring");
+        redirectUris.add("http://127.0.0.1:9095/client/login/oauth2/code/spring");
+        redirectUris.add("http://localhost:9095/client/callback");
+        redirectUris.add("http://localhost:9095/client");
+        redirectUris.add("http://localhost:9090/login/oauth2/code/spring");
+        redirectUris.add("http://localhost:9095/client/login/oauth2/code/spring");
+        redirectUris.add("https://oauth.pstmn.io/v1/callback");
+        return redirectUris;
+    }
+
     /*
      * Repository with all registered OAuth/OIDC clients.
      */
@@ -50,7 +64,7 @@ public class ClientRegistrationConfiguration {
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
                         .accessTokenTimeToLive(Duration.ofMinutes(15))
-                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).build())
+                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).reuseRefreshTokens(false).build())
                 .redirectUris(uris -> uris.addAll(redirectUris))
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
@@ -72,7 +86,7 @@ public class ClientRegistrationConfiguration {
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
                         .accessTokenTimeToLive(Duration.ofMinutes(15))
-                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).build())
+                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).reuseRefreshTokens(false).build())
                 .redirectUris(uris -> uris.addAll(redirectUris))
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
@@ -93,7 +107,7 @@ public class ClientRegistrationConfiguration {
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE)
                         .accessTokenTimeToLive(Duration.ofMinutes(15))
-                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).build())
+                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).reuseRefreshTokens(false).build())
                 .redirectUris(uris -> uris.addAll(redirectUris))
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
@@ -106,16 +120,16 @@ public class ClientRegistrationConfiguration {
                 .clientSecret(passwordEncoder.encode(CLIENT_SECRET))
                 .clientAuthenticationMethods(methods -> methods.addAll(
                         List.of(
-                            ClientAuthenticationMethod.NONE,
-                            ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
-                            ClientAuthenticationMethod.CLIENT_SECRET_POST
+                                ClientAuthenticationMethod.NONE,
+                                ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
+                                ClientAuthenticationMethod.CLIENT_SECRET_POST
                         )
                 ))
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE)
                         .accessTokenTimeToLive(Duration.ofMinutes(15))
-                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).build())
+                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).reuseRefreshTokens(false).build())
                 .redirectUris(uris -> {
                     uris.addAll(redirectUris);
                 })
@@ -125,24 +139,31 @@ public class ClientRegistrationConfiguration {
                 .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
                 .build();
 
+        RegisteredClient demoClientTokenExchange = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("demo-client-token-exchange")
+                .clientSecret(passwordEncoder.encode(CLIENT_SECRET))
+                .clientAuthenticationMethods(methods -> methods.addAll(
+                        List.of(
+                                ClientAuthenticationMethod.NONE,
+                                ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
+                                ClientAuthenticationMethod.CLIENT_SECRET_POST
+                        )
+                ))
+                .authorizationGrantType(AuthorizationGrantType.TOKEN_EXCHANGE)
+                .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
+                        .accessTokenTimeToLive(Duration.ofMinutes(360)).build())
+                .scopes(scopes -> scopes.addAll(List.of(
+                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
+                )))
+                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
+                .build();
+
         LOGGER.info("Registered OAuth2/OIDC clients");
 
         // Save registered client in db as if in-memory
-        return new InMemoryRegisteredClientRepository(demoClient, demoClientPkce, demoClientOpaque, demoClientPkceOpaque);
-    }
-
-    private static Set<String> getRedirectUris() {
-        Set<String> redirectUris = new HashSet<>();
-        redirectUris.add("http://127.0.0.1:9095/client/callback");
-        redirectUris.add("http://127.0.0.1:9095/client");
-        redirectUris.add("http://127.0.0.1:9090/login/oauth2/code/spring");
-        redirectUris.add("http://127.0.0.1:9095/client/login/oauth2/code/spring");
-        redirectUris.add("http://localhost:9095/client/callback");
-        redirectUris.add("http://localhost:9095/client");
-        redirectUris.add("http://localhost:9090/login/oauth2/code/spring");
-        redirectUris.add("http://localhost:9095/client/login/oauth2/code/spring");
-        redirectUris.add("https://oauth.pstmn.io/v1/callback");
-        return redirectUris;
+        return new InMemoryRegisteredClientRepository(
+                demoClient, demoClientPkce, demoClientOpaque, demoClientPkceOpaque, demoClientTokenExchange
+        );
     }
 
 }
