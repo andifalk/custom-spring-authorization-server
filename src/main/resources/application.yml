@@ -1,5 +1,5 @@
 server:
-  port: 9000
+  port: 9500
 
 logging:
   level:
@@ -7,12 +7,3 @@ logging:
     org.springframework.web: INFO
     org.springframework.security: trace
     org.springframework.security.jackson2: INFO
-
-spring:
-  security:
-    oauth2:
-      resourceserver:
-        opaquetoken:
-          introspection-uri: http://localhost:9000/oauth2/introspect
-          client-id: demo-client-opaque
-          client-secret: secret

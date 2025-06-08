@@ -3,23 +3,28 @@ package com.example.spring.authorizationserver.config;
 import com.example.spring.authorizationserver.jose.Jwks;
 import com.example.spring.authorizationserver.security.AuthorizationServerUserDetailsService;
 import com.example.spring.authorizationserver.security.OidcUserInfoService;
+import com.nimbusds.jose.JOSEObjectType;
+import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier;
+import com.nimbusds.jose.proc.JWSKeySelector;
+import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
+import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.oidc.authentication.OidcUserInfoAuthenticationContext;
 import org.springframework.security.oauth2.server.authorization.oidc.authentication.OidcUserInfoAuthenticationToken;
@@ -27,54 +32,49 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
-import org.springframework.security.web.util.matcher.RequestMatcher;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Function;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class AuthorizationServerConfig {
 
     /*
-     * Security config for all authz server endpoints.
+     * Security config for all authorization server endpoints.
      */
     @Bean
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+    @Order(1)
+    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http, OidcUserInfoService oidcUserInfoService) throws Exception {
+
         Function<OidcUserInfoAuthenticationContext, OidcUserInfo> userInfoMapper = (context) -> {
             OidcUserInfoAuthenticationToken authentication = context.getAuthentication();
-            return new OidcUserInfo(oidcUserInfoService().loadUser(authentication.getName()).getClaims());
+            return new OidcUserInfo(oidcUserInfoService.loadUser(authentication.getName()).getClaims());
         };
 
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
-        RequestMatcher endpointsMatcher = authorizationServerConfigurer.getEndpointsMatcher();
 
-        authorizationServerConfigurer.oidc(
-                o -> o
-                        .providerConfigurationEndpoint(Customizer.withDefaults())
-                        .clientRegistrationEndpoint(Customizer.withDefaults())
-                        .userInfoEndpoint((userInfo) -> userInfo
-                                .userInfoMapper(userInfoMapper)
-                        )
-        );
-
-        http.securityMatcher(endpointsMatcher)
-                .authorizeHttpRequests(
-                        (authorize) -> authorize.anyRequest().authenticated()
+        http
+                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+                .with(authorizationServerConfigurer, (authorizationServer) ->
+                        authorizationServer
+                                .oidc((oidc) -> oidc
+                                        .userInfoEndpoint((userInfo) -> userInfo
+                                                .userInfoMapper(userInfoMapper)
+                                        )
+                                )
                 )
-                .csrf(
-                        (csrf) -> csrf.ignoringRequestMatchers(endpointsMatcher)
+                .authorizeHttpRequests((authorize) -> authorize
+                        .anyRequest().authenticated()
                 )
-                .oauth2ResourceServer((resourceServer) -> resourceServer
-                        .opaqueToken(Customizer.withDefaults()))
                 .exceptionHandling((exceptions) -> exceptions
                         .defaultAuthenticationEntryPointFor(
                                 new LoginUrlAuthenticationEntryPoint("/login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
                         )
-                )
-                .with(authorizationServerConfigurer, withDefaults());
+                );
 
         return http.build();
     }
@@ -106,22 +106,33 @@ public class AuthorizationServerConfig {
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
-        return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
-    }
-
-    @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder().build();
     }
 
     @Bean
-    public UserDetailsService userDetailsService() {
-        return new AuthorizationServerUserDetailsService(passwordEncoder());
+    public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
+        return new AuthorizationServerUserDetailsService(passwordEncoder);
     }
 
     @Bean
-    public OidcUserInfoService oidcUserInfoService() {
-        return new OidcUserInfoService(userDetailsService());
+    public OidcUserInfoService oidcUserInfoService(UserDetailsService userDetailsService) {
+        return new OidcUserInfoService(userDetailsService);
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
+        Set<JWSAlgorithm> jwsAlgs = new HashSet<>();
+        jwsAlgs.addAll(JWSAlgorithm.Family.RSA);
+        jwsAlgs.addAll(JWSAlgorithm.Family.EC);
+        jwsAlgs.addAll(JWSAlgorithm.Family.HMAC_SHA);
+        JOSEObjectType JWT_AT = new JOSEObjectType("AT+JWT");
+        DefaultJOSEObjectTypeVerifier<SecurityContext> JWT = new DefaultJOSEObjectTypeVerifier<>(JOSEObjectType.JWT, JWT_AT);
+        ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+        JWSKeySelector<SecurityContext> jwsKeySelector = new JWSVerificationKeySelector<>(jwsAlgs, jwkSource);
+        jwtProcessor.setJWSKeySelector(jwsKeySelector);
+        jwtProcessor.setJWSTypeVerifier(JWT);
+        jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> {});
+        return new NimbusJwtDecoder(jwtProcessor);
     }
 }
