@@ -1,4 +1,4 @@
 ### GET request to example server
-GET http://localhost:9000/userinfo
+GET http://localhost:9500/userinfo
 Authorization: Bearer {{$auth.token("spring")}}
 ###

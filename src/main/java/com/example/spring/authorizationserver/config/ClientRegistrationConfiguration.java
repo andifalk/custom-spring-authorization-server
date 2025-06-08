@@ -27,19 +27,47 @@ import static org.springframework.security.oauth2.server.authorization.settings.
 public class ClientRegistrationConfiguration {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ClientRegistrationConfiguration.class);
+
+    public static final String CLIENT_ID_DEMO_CLIENT_TOKEN_EXCHANGE = "demo-client-token-exchange";
+    public static final String CLIENT_ID_DEMO_CLIENT_PKCE_OPAQUE = "demo-client-opaque-pkce";
+    public static final String CLIENT_ID_DEMO_CLIENT_OPAQUE = "demo-client-opaque";
+    public static final String CLIENT_ID_DEMO_CLIENT_JWT_PKCE = "demo-client-jwt-pkce";
+    public static final String CLIENT_ID_DEMO_CLIENT_JWT = "demo-client-jwt";
+    public static final String CLIENT_ID_DEMO_CLIENT_CREDENTIALS = "demo-client-credentials";
+
+    private static final String CLIENT_SECRET_DEMO_CLIENT_TOKEN_EXCHANGE = "demo-client-token-exchange-secret";
+    private static final String CLIENT_SECRET_DEMO_CLIENT_PKCE_OPAQUE = "demo-client-opaque-pkce-secret";
+    private static final String CLIENT_SECRET_DEMO_CLIENT_OPAQUE = "demo-client-opaque-secret";
+    private static final String CLIENT_SECRET_DEMO_CLIENT_JWT_PKCE = "demo-client-jwt-pkce-secret";
+    private static final String CLIENT_SECRET_DEMO_CLIENT_JWT = "demo-client-jwt-secret";
+    private static final String CLIENT_SECRET_DEMO_CLIENT_CREDENTIALS = "demo-client-credentials-secret";
+
     private static final String SCOPE_OFFLINE_ACCESS = "offline_access";
-    private static final String CLIENT_SECRET = "secret";
+
 
     private static Set<String> getRedirectUris() {
         Set<String> redirectUris = new HashSet<>();
-        redirectUris.add("http://127.0.0.1:9095/client/callback");
-        redirectUris.add("http://127.0.0.1:9095/client");
-        redirectUris.add("http://127.0.0.1:9090/login/oauth2/code/spring");
-        redirectUris.add("http://127.0.0.1:9095/client/login/oauth2/code/spring");
-        redirectUris.add("http://localhost:9095/client/callback");
-        redirectUris.add("http://localhost:9095/client");
-        redirectUris.add("http://localhost:9090/login/oauth2/code/spring");
-        redirectUris.add("http://localhost:9095/client/login/oauth2/code/spring");
+
+        // Backend URLs
+        redirectUris.add("http://127.0.0.1:8080/client/callback");
+        redirectUris.add("http://127.0.0.1:8080/client");
+        redirectUris.add("http://127.0.0.1:8080/login/oauth2/code/spring");
+        redirectUris.add("http://127.0.0.1:8080/client/login/oauth2/code/spring");
+        redirectUris.add("http://localhost:8080/client/callback");
+        redirectUris.add("http://localhost:8080/client");
+        redirectUris.add("http://localhost:8080/login/oauth2/code/spring");
+        redirectUris.add("http://localhost:8080/client/login/oauth2/code/spring");
+
+        // Angular Callback
+        redirectUris.add("http://localhost:4200/login-callback");
+        redirectUris.add("http://localhost:4200/index.html");
+        redirectUris.add("http://localhost:4200/silent-refresh.html");
+        redirectUris.add("http://localhost:4200/silent-renew.html");
+
+        // React Callback
+        redirectUris.add("http://localhost:3000/login-callback");
+
+        // Postman URL
         redirectUris.add("https://oauth.pstmn.io/v1/callback");
         return redirectUris;
     }
@@ -51,73 +79,58 @@ public class ClientRegistrationConfiguration {
     public RegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
         Set<String> redirectUris = getRedirectUris();
 
-        RegisteredClient demoClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("demo-client")
-                .clientSecret(passwordEncoder.encode(CLIENT_SECRET))
+        RegisteredClient demoClient = getDemoClientJWT(passwordEncoder, redirectUris);
+
+        RegisteredClient demoClientPKCE = getDemoClientJWTWithPKCE(passwordEncoder, redirectUris);
+
+        RegisteredClient demoClientOpaque = getDemoClientOpaque(passwordEncoder, redirectUris);
+
+        RegisteredClient demoClientPKCEOpaque = getDemoClientOpaqueWithPKCE(passwordEncoder, redirectUris);
+
+        RegisteredClient demoClientTokenExchange = getDemoClientTokenExchange(passwordEncoder);
+
+        RegisteredClient demoClientCredentials = getDemoClientCredentials(passwordEncoder);
+
+        LOGGER.info("Add {}", demoClient);
+        LOGGER.info("Add {}", demoClientPKCE);
+        LOGGER.info("Add {}", demoClientOpaque);
+        LOGGER.info("Add {}", demoClientPKCEOpaque);
+        LOGGER.info("Add {}", demoClientTokenExchange);
+        LOGGER.info("Add {}", demoClientCredentials);
+
+        // Save registered client in db as if in-memory
+        return new InMemoryRegisteredClientRepository(
+                demoClient, demoClientPKCE, demoClientOpaque,
+                demoClientPKCEOpaque, demoClientTokenExchange, demoClientCredentials
+        );
+    }
+
+    private static RegisteredClient getDemoClientTokenExchange(PasswordEncoder passwordEncoder) {
+        return
+                RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId(CLIENT_ID_DEMO_CLIENT_TOKEN_EXCHANGE)
+                .clientSecret(passwordEncoder.encode(CLIENT_SECRET_DEMO_CLIENT_TOKEN_EXCHANGE))
                 .clientAuthenticationMethods(methods -> methods.addAll(
                         List.of(
                                 ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
                                 ClientAuthenticationMethod.CLIENT_SECRET_POST
-                        )))
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                        )
+                ))
+                .authorizationGrantType(AuthorizationGrantType.TOKEN_EXCHANGE)
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
-                        .accessTokenTimeToLive(Duration.ofMinutes(15))
-                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).reuseRefreshTokens(false).build())
-                .redirectUris(uris -> uris.addAll(redirectUris))
+                        .accessTokenTimeToLive(Duration.ofHours(8)).build())
                 .scopes(scopes -> scopes.addAll(List.of(
-                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
+                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL
                 )))
-                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
+                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).requireProofKey(false).build())
                 .build();
+    }
 
-        RegisteredClient demoClientPkce = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("demo-client-pkce")
-                .clientSecret(passwordEncoder.encode(CLIENT_SECRET))
-                .clientAuthenticationMethods(methods -> methods.addAll(
-                        List.of(
-                                ClientAuthenticationMethod.NONE,
-                                ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
-                                ClientAuthenticationMethod.CLIENT_SECRET_POST
-                        ))
-                )
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
-                        .accessTokenTimeToLive(Duration.ofMinutes(15))
-                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).reuseRefreshTokens(false).build())
-                .redirectUris(uris -> uris.addAll(redirectUris))
-                .scopes(scopes -> scopes.addAll(List.of(
-                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
-                )))
-                .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
-                .build();
 
-        RegisteredClient demoClientOpaque = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("demo-client-opaque")
-                .clientSecret(passwordEncoder.encode(CLIENT_SECRET))
-                .clientAuthenticationMethods(methods -> methods.addAll(
-                        List.of(
-                                ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
-                                ClientAuthenticationMethod.CLIENT_SECRET_POST
-                        )))
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE)
-                        .accessTokenTimeToLive(Duration.ofMinutes(15))
-                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).reuseRefreshTokens(false).build())
-                .redirectUris(uris -> uris.addAll(redirectUris))
-                .scopes(scopes -> scopes.addAll(List.of(
-                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
-                )))
-                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
-                .build();
-
-        RegisteredClient demoClientPkceOpaque = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("demo-client-pkce-opaque")
-                .clientSecret(passwordEncoder.encode(CLIENT_SECRET))
+    private static RegisteredClient getDemoClientOpaqueWithPKCE(PasswordEncoder passwordEncoder, Set<String> redirectUris) {
+        return RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId(CLIENT_ID_DEMO_CLIENT_PKCE_OPAQUE)
+                .clientSecret(passwordEncoder.encode(CLIENT_SECRET_DEMO_CLIENT_PKCE_OPAQUE))
                 .clientAuthenticationMethods(methods -> methods.addAll(
                         List.of(
                                 ClientAuthenticationMethod.NONE,
@@ -138,32 +151,100 @@ public class ClientRegistrationConfiguration {
                 )))
                 .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
                 .build();
+    }
 
-        RegisteredClient demoClientTokenExchange = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("demo-client-token-exchange")
-                .clientSecret(passwordEncoder.encode(CLIENT_SECRET))
+    private static RegisteredClient getDemoClientOpaque(PasswordEncoder passwordEncoder, Set<String> redirectUris) {
+        return
+                RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId(CLIENT_ID_DEMO_CLIENT_OPAQUE)
+                .clientSecret(passwordEncoder.encode(CLIENT_SECRET_DEMO_CLIENT_OPAQUE))
                 .clientAuthenticationMethods(methods -> methods.addAll(
                         List.of(
-                                ClientAuthenticationMethod.NONE,
                                 ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
                                 ClientAuthenticationMethod.CLIENT_SECRET_POST
-                        )
-                ))
-                .authorizationGrantType(AuthorizationGrantType.TOKEN_EXCHANGE)
-                .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
-                        .accessTokenTimeToLive(Duration.ofMinutes(360)).build())
+                        )))
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE)
+                        .accessTokenTimeToLive(Duration.ofMinutes(15))
+                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).reuseRefreshTokens(false).build())
+                .redirectUris(uris -> uris.addAll(redirectUris))
                 .scopes(scopes -> scopes.addAll(List.of(
                         OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
                 )))
                 .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
                 .build();
+    }
 
-        LOGGER.info("Registered OAuth2/OIDC clients");
+    private static RegisteredClient getDemoClientJWTWithPKCE(PasswordEncoder passwordEncoder, Set<String> redirectUris) {
+        return
+                RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId(CLIENT_ID_DEMO_CLIENT_JWT_PKCE)
+                .clientSecret(passwordEncoder.encode(CLIENT_SECRET_DEMO_CLIENT_JWT_PKCE))
+                .clientAuthenticationMethods(methods -> methods.addAll(
+                        List.of(
+                                ClientAuthenticationMethod.NONE,
+                                ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
+                                ClientAuthenticationMethod.CLIENT_SECRET_POST
+                        ))
+                )
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
+                        .accessTokenTimeToLive(Duration.ofMinutes(15))
+                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).reuseRefreshTokens(false).build())
+                .redirectUris(uris -> uris.addAll(redirectUris))
+                .scopes(scopes -> scopes.addAll(List.of(
+                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
+                )))
+                .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
+                .build();
+    }
 
-        // Save registered client in db as if in-memory
-        return new InMemoryRegisteredClientRepository(
-                demoClient, demoClientPkce, demoClientOpaque, demoClientPkceOpaque, demoClientTokenExchange
-        );
+    private static RegisteredClient getDemoClientJWT(PasswordEncoder passwordEncoder, Set<String> redirectUris) {
+        return
+                RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId(CLIENT_ID_DEMO_CLIENT_JWT)
+                .clientSecret(passwordEncoder.encode(CLIENT_SECRET_DEMO_CLIENT_JWT))
+                .clientAuthenticationMethods(methods -> methods.addAll(
+                        List.of(
+                                ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
+                                ClientAuthenticationMethod.CLIENT_SECRET_POST
+                        )))
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
+                        .accessTokenTimeToLive(Duration.ofMinutes(15))
+                        .authorizationCodeTimeToLive(Duration.ofMinutes(2)).reuseRefreshTokens(false).build())
+                .redirectUris(uris -> uris.addAll(redirectUris))
+                .scopes(scopes -> scopes.addAll(List.of(
+                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
+                )))
+                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
+                .build();
+    }
+
+    private static RegisteredClient getDemoClientCredentials(PasswordEncoder passwordEncoder) {
+        return
+                RegisteredClient.withId(UUID.randomUUID().toString())
+                        .clientId(CLIENT_ID_DEMO_CLIENT_CREDENTIALS)
+                        .clientSecret(passwordEncoder.encode(CLIENT_SECRET_DEMO_CLIENT_CREDENTIALS))
+                        .clientAuthenticationMethods(methods -> methods.addAll(
+                                List.of(
+                                        ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
+                                        ClientAuthenticationMethod.CLIENT_SECRET_POST
+                                )))
+                        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                        .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
+                                .accessTokenTimeToLive(Duration.ofMinutes(15))
+                                .authorizationCodeTimeToLive(Duration.ofMinutes(2)).reuseRefreshTokens(false).build())
+                        .scopes(scopes -> scopes.addAll(List.of(
+                                OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, SCOPE_OFFLINE_ACCESS
+                        )))
+                        .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
+                        .build();
     }
 
 }

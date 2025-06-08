@@ -8,47 +8,58 @@ Customized from sample at [https://github.com/spring-projects/spring-authorizati
 
 ## Requirements
 
-To run this server you need at least a Java 21 runtime as this project uses spring boot 3.x.
+To run this server you need at least a Java 21 runtime.
 
 ## Usage
 
-Start the server by running the class _com.example.spring.authorizationserver.SpringAuthorizationServerApplication_.
+Start the server by running the class `com.example.spring.authorizationserver.SpringAuthorizationServerApplication`.
 
-Look up the OAuth2/OIDC configuration from [http://localhost:9000/.well-known/openid-configuration](http://localhost:9000/.well-known/openid-configuration) to configure your clients and resource servers.
+Look up the OAuth2/OIDC configuration from [http://localhost:9500/.well-known/openid-configuration](http://localhost:9000/.well-known/openid-configuration) to configure your clients and resource servers.
 
 These are the most important configuration settings:
 
 | Configuration Parameter | Value                                   | 
 |-------------------------|-----------------------------------------|
-| issuer                  | http://localhost:9000                   |
-| authorization_endpoint  | http://localhost:9000/oauth2/authorize  |
-| token_endpoint          | http://localhost:9000/oauth2/token      |
-| jwks_uri                | http://localhost:9000/oauth2/jwks       |
-| userinfo_endpoint       | http://localhost:9000/userinfo          |
-| introspection_endpoint  | http://localhost:9000/oauth2/introspect |
+| issuer                  | http://localhost:9500                   |
+| authorization_endpoint  | http://localhost:9500/oauth2/authorize  |
+| token_endpoint          | http://localhost:9500/oauth2/token      |
+| jwks_uri                | http://localhost:9500/oauth2/jwks       |
+| userinfo_endpoint       | http://localhost:9500/userinfo          |
+| introspection_endpoint  | http://localhost:9500/oauth2/introspect |
 
 ## Registered Clients
 
 This server comes with predefined registered OAuth2/OIDC clients:
 
-| Client ID               | Client-Secret | PKCE | Client-Credentials Grant | Access Token Format |
-|-------------------------|---------------|------|--------------------------|---------------------|
-| demo-client             | secret        | --   | X                        | JWT                 |
-| demo-client-pkce        | --            | X    | --                       | JWT                 |
-| demo-client-opaque      | secret        | --   | X                        | Opaque              |
-| demo-client-pkce-opaque | --            | X    | --                       | Opaque              |
+| Client ID                  | Client-Secret                     | PKCE | Grant(s)                                        | Access Token Format |
+|----------------------------|-----------------------------------|------|-------------------------------------------------|---------------------|
+| demo-client-jwt            | demo-client-jwt-secret            | --   | Authorization Code, Refresh Token               | JWT                 |
+| demo-client-jwt-pkce       | demo-client-jwt-pkce-secret       | X    | Authorization Code                              | JWT                 |
+| demo-client-token-exchange | demo-client-token-exchange-secret | --   | urn:ietf:params:oauth:grant-type:token-exchange | JWT                 |
+| demo-client-credentials    | demo-client-credentials-secret    | --   | Client Credentials                              | JWT                 |
+| demo-client-opaque         | demo-client-opaque-secret         | --   | Authorization Code                              | Opaque              |
+| demo-client-opaque-pkce    | demo-client-opaque-pkce-secret    | X    | Authorization Code                              | Opaque              |
 
-All clients have configured the following redirect URIs (including a special one for postman):
+All interactive clients (using Authorization Code) have configured the following redirect URIs:
 
-* http://127.0.0.1:9095/client/callback
-* http://127.0.0.1:9095/client/authorized
-* http://127.0.0.1:9095/client
-* http://127.0.0.1:9095/login/oauth2/code/spring-authz-server
-* http://localhost:9095/client/callback
-* http://localhost:9095/client/authorized
-* http://localhost:9095/client
-* http://localhost:9095/login/oauth2/code/spring-authz-server
-* https://oauth.pstmn.io/v1/callback
+* Backends
+  * http://127.0.0.1:8080/client/callback
+  * http://127.0.0.1:8080/client/authorized
+  * http://127.0.0.1:8080/client
+  * http://127.0.0.1:8080/login/oauth2/code/spring-authz-server
+  * http://localhost:8080/client/callback
+  * http://localhost:8080/client/authorized
+  * http://localhost:8080/client
+  * http://localhost:8080/login/oauth2/code/spring-authz-server
+* Postman 
+  * https://oauth.pstmn.io/v1/callback
+* Angular  
+  * http://localhost:4200/login-callback
+  * http://localhost:4200/index.html
+  * http://localhost:4200/silent-refresh.html
+  * http://localhost:4200/silent-renew.html
+* React.js
+  * http://localhost:3000/login-callback
 
 ## Login
 

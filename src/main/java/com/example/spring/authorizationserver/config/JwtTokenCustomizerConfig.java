@@ -1,42 +1,79 @@
 package com.example.spring.authorizationserver.config;
 
 import com.example.spring.authorizationserver.security.OidcUserInfoService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2TokenExchangeAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 
 import java.util.List;
 
-import static org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames.ID_TOKEN;
 import static org.springframework.security.oauth2.server.authorization.OAuth2TokenType.ACCESS_TOKEN;
 
 @Configuration
 public class JwtTokenCustomizerConfig {
+
+    public static final String RFC_9068_AT_JWT_TYPE = "at+jwt";
+    public static final String JWT_TYPE = "jwt";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JwtTokenCustomizerConfig.class);
+
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer(OidcUserInfoService userInfoService) {
         return (context) -> {
-            context.getJwsHeader().type("jwt");
-            if (!AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
-                if (ID_TOKEN.equals(context.getTokenType().getValue()) || ACCESS_TOKEN.equals(context.getTokenType())) {
-                    OidcUserInfo userInfo = userInfoService.loadUser(
-                            context.getPrincipal().getName());
-                    context.getClaims().claims(claims ->
-                            claims.putAll(userInfo.getClaims()));
-                    if (ACCESS_TOKEN.equals(context.getTokenType())) {
-                        if (!AuthorizationGrantType.TOKEN_EXCHANGE.equals(context.getAuthorizationGrantType())) {
-                            context.getClaims().audience(
-                                    List.of(
-                                            context.getRegisteredClient().getClientId(),
-                                            "demo-api"
-                                    )
-                            );
-                        }
-                    }
-                }
+            LOGGER.info("tokenExchangeTokenCustomizer, context={}", context);
+
+            if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
+                clientCredentialsTokenCustomizer(context);
+            } else if (AuthorizationGrantType.TOKEN_EXCHANGE.equals(context.getAuthorizationGrantType())) {
+                tokenExchangeTokenCustomizer(context, userInfoService);
+            } else {
+                authorizationCodeTokenCustomizer(context, userInfoService);
             }
         };
+    }
+
+    private void authorizationCodeTokenCustomizer(JwtEncodingContext context, OidcUserInfoService userInfoService) {
+        if (ACCESS_TOKEN.equals(context.getTokenType())) {
+            context.getJwsHeader().type(RFC_9068_AT_JWT_TYPE);
+        } else {
+            context.getJwsHeader().type(JWT_TYPE);
+        }
+        OidcUserInfo userInfo = userInfoService.loadUser(
+                context.getPrincipal().getName());
+        context.getClaims().claims(claims ->
+                claims.putAll(userInfo.getClaims()));
+    }
+
+    private void clientCredentialsTokenCustomizer(JwtEncodingContext context) {
+        if (ACCESS_TOKEN.equals(context.getTokenType())) {
+            context.getJwsHeader().type(RFC_9068_AT_JWT_TYPE);
+        } else {
+            context.getJwsHeader().type(JWT_TYPE);
+        }
+    }
+
+    private void tokenExchangeTokenCustomizer(JwtEncodingContext context, OidcUserInfoService userInfoService) {
+        if (ACCESS_TOKEN.equals(context.getTokenType())) {
+            context.getJwsHeader().type(RFC_9068_AT_JWT_TYPE);
+                        context.getClaims().audience(
+                    List.of(
+                        "Test"
+                    )
+            );
+        } else {
+            context.getJwsHeader().type(JWT_TYPE);
+        }
+        OidcUserInfo userInfo = userInfoService.loadUser(
+                context.getPrincipal().getName());
+        context.getClaims().claims(claims ->
+                claims.putAll(userInfo.getClaims()));
     }
 }
