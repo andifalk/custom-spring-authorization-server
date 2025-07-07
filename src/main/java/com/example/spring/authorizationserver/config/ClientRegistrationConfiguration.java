@@ -60,6 +60,7 @@ public class ClientRegistrationConfiguration {
 
         // Angular Callback
         redirectUris.add("http://localhost:4200/login-callback");
+        redirectUris.add("http://localhost:4200/callback");
         redirectUris.add("http://localhost:4200/index.html");
         redirectUris.add("http://localhost:4200/silent-refresh.html");
         redirectUris.add("http://localhost:4200/silent-renew.html");
@@ -120,7 +121,7 @@ public class ClientRegistrationConfiguration {
                 .tokenSettings(TokenSettings.builder().accessTokenFormat(SELF_CONTAINED)
                         .accessTokenTimeToLive(Duration.ofHours(8)).build())
                 .scopes(scopes -> scopes.addAll(List.of(
-                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL
+                        OidcScopes.OPENID, OidcScopes.PROFILE, OidcScopes.EMAIL, "message.read", "message.write"
                 )))
                 .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).requireProofKey(false).build())
                 .build();

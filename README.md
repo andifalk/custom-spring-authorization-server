@@ -72,11 +72,6 @@ Therefore, to login please use one of these predefined credentials:
 | ckent    | clark.kent@example.com   | kent     | USER        |
 | pparker  | peter.parker@example.com | parker   | USER, ADMIN |
 
-## Postman
-
-You may use the provided postman collections to try the authorization server endpoints and the registered clients.
-The collections (for both JWT and Opaque tokens) can be found in the _postman_ folder.
-
 ## Customizations
 
 This customized version contains an extended `user` object compared to the standard spring security `user` object.
@@ -91,40 +86,44 @@ __com.example.spring.authorizationserver.config.AuthorizationServerConfig:__
 ```java
 @Configuration(proxyBeanMethods = false)
 public class AuthorizationServerConfig {
+
+    /*
+     * Security config for all authorization server endpoints.
+     */
     @Bean
-    @Order(Ordered.HIGHEST_PRECEDENCE + 1)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+    @Order(1)
+    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http, OidcUserInfoService oidcUserInfoService) throws Exception {
+
         Function<OidcUserInfoAuthenticationContext, OidcUserInfo> userInfoMapper = (context) -> {
             OidcUserInfoAuthenticationToken authentication = context.getAuthentication();
-            return new OidcUserInfo(oidcUserInfoService().loadUser(authentication.getName()).getClaims());
+            return new OidcUserInfo(oidcUserInfoService.loadUser(authentication.getName()).getClaims());
         };
 
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
-        RequestMatcher endpointsMatcher = authorizationServerConfigurer.getEndpointsMatcher();
-        http.securityMatcher(endpointsMatcher).authorizeHttpRequests((authorize) ->
-                authorize.anyRequest().authenticated()).csrf((csrf) -> {
-            csrf.ignoringRequestMatchers(endpointsMatcher);
-        }).with(authorizationServerConfigurer, withDefaults());
-        authorizationServerConfigurer.oidc(
-                o -> o
-                        .providerConfigurationEndpoint(Customizer.withDefaults())
-                        .clientRegistrationEndpoint(Customizer.withDefaults())
-                        .userInfoEndpoint((userInfo) -> userInfo
-                                .userInfoMapper(userInfoMapper)
-                        )
-        );	// Enable OpenID Connect 1.0
 
         http
+                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+                .with(authorizationServerConfigurer, (authorizationServer) ->
+                        authorizationServer
+                                .oidc((oidc) -> oidc
+                                        .userInfoEndpoint((userInfo) -> userInfo
+                                                .userInfoMapper(userInfoMapper)
+                                        )
+                                )
+                )
+                .authorizeHttpRequests((authorize) -> authorize
+                        .anyRequest().authenticated()
+                )
                 .exceptionHandling((exceptions) -> exceptions
                         .defaultAuthenticationEntryPointFor(
                                 new LoginUrlAuthenticationEntryPoint("/login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
                         )
-                )
-                .oauth2ResourceServer((resourceServer) -> resourceServer
-                        .opaqueToken(Customizer.withDefaults()));
+                );
+
         return http.build();
     }
+  //...
 }
 ```
 
@@ -133,32 +132,38 @@ public class AuthorizationServerConfig {
 ```java
 @Configuration
 public class JwtTokenCustomizerConfig {
+
+    public static final String RFC_9068_AT_JWT_TYPE = "at+jwt";
+    public static final String JWT_TYPE = "jwt";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JwtTokenCustomizerConfig.class);
+
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer(OidcUserInfoService userInfoService) {
         return (context) -> {
-            context.getJwsHeader().type("jwt");
-            if (!AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
-                if (ID_TOKEN.equals(context.getTokenType().getValue()) || ACCESS_TOKEN.equals(context.getTokenType())) {
-                    OidcUserInfo userInfo = userInfoService.loadUser(
-                            context.getPrincipal().getName());
-                    context.getClaims().claims(claims ->
-                            claims.putAll(userInfo.getClaims()));
-                    if (ACCESS_TOKEN.equals(context.getTokenType())) {
-                        context.getClaims().audience(
-                                List.of(
-                                        context.getRegisteredClient().getClientId(),
-                                        "demo-api"
-                                )
-                        );
-                    }
-                }
+            LOGGER.info("tokenExchangeTokenCustomizer, context={}", context);
+
+            if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
+                clientCredentialsTokenCustomizer(context);
+            } else if (AuthorizationGrantType.TOKEN_EXCHANGE.equals(context.getAuthorizationGrantType())) {
+                tokenExchangeTokenCustomizer(context, userInfoService);
+            } else {
+                authorizationCodeTokenCustomizer(context, userInfoService);
             }
         };
     }
+    //...
 }
 ```
 
 ## Testing the Authorization Server
+
+### Postman
+
+You may use the provided postman collections to try the authorization server endpoints and the registered clients.
+The collections (for both JWT and Opaque tokens) can be found in the _postman_ folder.
+
+### IntelliJ Http Client
 
 You may use the http client requests located in the `requests` folder if you are using IntelliJ.
 
