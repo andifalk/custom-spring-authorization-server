@@ -5,5 +5,5 @@ logging:
   level:
     root: INFO
     org.springframework.web: INFO
-    org.springframework.security: trace
+    org.springframework.security: DEBUG
     org.springframework.security.jackson2: INFO
